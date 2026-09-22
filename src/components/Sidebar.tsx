@@ -35,7 +35,8 @@ export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreat
   const status =
     aiStatus.mode === 'checking' ? { dot: 'bg-muted', label: 'Checking AI…' }
     : aiStatus.mode === 'offline' ? { dot: 'bg-warn', label: 'Offline estimates' }
-    : { dot: 'bg-ok', label: 'Claude connected' };
+    : aiStatus.mode === 'browser' ? { dot: 'bg-ok', label: 'Claude · your key' }
+    : { dot: 'bg-ok', label: 'Claude · server key' };
 
   return (
     <div className="flex flex-col h-full">

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { CATEGORIES, type EstimateRequest, type EstimateResponse } from '../lib/types.js';
-import { fail, handleApiError, json, MODEL, resolveClient } from '../lib/ai.js';
+import { API_LIMITS, CATEGORIES, type EstimateRequest, type EstimateResponse } from '../lib/types.js';
+import { fail, handleApiError, json, MODEL, readJson, resolveClient } from '../lib/ai.js';
 
 const Output = z.object({
   estimates: z.array(
@@ -33,18 +33,32 @@ Return exactly one estimate per target id, in the same order.`;
 
 /** POST /api/estimate */
 export async function POST(request: Request) {
-  let body: EstimateRequest;
-  try {
-    body = (await request.json()) as EstimateRequest;
-  } catch {
-    return fail('bad_request', 'Invalid JSON body.', 400);
-  }
-  if (!Array.isArray(body.lines) || !Array.isArray(body.targetIds) || body.targetIds.length === 0) {
+  const parsed = await readJson<EstimateRequest>(request);
+  if (parsed.error) return parsed.error;
+  const body = parsed.data;
+  if (!Array.isArray(body?.lines) || !Array.isArray(body?.targetIds) || body.targetIds.length === 0) {
     return fail('bad_request', 'Expected { title, lines[], targetIds[] }.', 400);
+  }
+  if (body.lines.length > API_LIMITS.lines) {
+    return fail('bad_request', `Note too long (max ${API_LIMITS.lines} lines).`, 400);
+  }
+  if (body.targetIds.length > API_LIMITS.targets) {
+    return fail('bad_request', `Too many lines at once (max ${API_LIMITS.targets}).`, 400);
   }
 
   const client = resolveClient(request);
-  if (!client) return fail('no_key', 'No API key configured.', 503);
+  if (!client) return fail('no_key', 'No usable API key: add your own key or the access code in Settings.', 503);
+
+  // Only estimate ids that are actually in the note; clip text to keep prompts bounded.
+  const lineIds = new Set(body.lines.map((l) => String(l.id)));
+  body.targetIds = [...new Set(body.targetIds.map(String))].filter((id) => lineIds.has(id));
+  if (body.targetIds.length === 0) return fail('bad_request', 'targetIds must reference lines.', 400);
+  body.title = String(body.title ?? '').slice(0, API_LIMITS.titleChars);
+  body.lines = body.lines.map((l) => ({
+    id: String(l.id),
+    text: String(l.text ?? '').slice(0, API_LIMITS.lineChars),
+    indent: l.indent === 1 ? 1 : 0,
+  }));
 
   const targets = new Set(body.targetIds);
   const rendered = body.lines
@@ -59,7 +73,7 @@ ${rendered}`;
   try {
     const response = await client.messages.parse({
       model: MODEL,
-      max_tokens: 16000,
+      max_tokens: 8000,
       system: SYSTEM,
       output_config: { effort: 'low', format: zodOutputFormat(Output) },
       messages: [{ role: 'user', content: prompt }],

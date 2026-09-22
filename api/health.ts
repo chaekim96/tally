@@ -1,6 +1,7 @@
-import { hasServerKey, json, MODEL } from '../lib/ai.js';
+import { json, MODEL, serverStatus } from '../lib/ai.js';
+import type { HealthResponse } from '../lib/types.js';
 
-/** GET /api/health → whether the server has a key configured. */
-export async function GET() {
-  return json({ ok: true, serverKey: hasServerKey(), model: MODEL });
+/** GET /api/health → which keys this request could use. */
+export async function GET(request: Request) {
+  return json({ ok: true, model: MODEL, ...serverStatus(request) } satisfies HealthResponse);
 }

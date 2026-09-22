@@ -45,8 +45,8 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
   };
 
   const aiLine =
-    aiStatus.mode === 'server' ? 'Using the server key (ANTHROPIC_API_KEY on Vercel).'
-    : aiStatus.mode === 'browser' ? 'Using the key saved in this browser.'
+    aiStatus.mode === 'browser' ? 'Using your own key — usage is billed to your Anthropic account.'
+    : aiStatus.mode === 'server' ? 'Using the server key, unlocked by your access code.'
     : aiStatus.mode === 'offline' ? `Offline: ${aiStatus.reason}. Estimates use built-in heuristics.`
     : 'Checking…';
 
@@ -88,13 +88,24 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
             <p className="text-xs text-muted mt-2">{aiLine}</p>
           </Section>
 
-          <Section title="Anthropic API key (optional)" hint="Only needed if the server has no key. Stored in this browser only and sent straight to the estimate function.">
+          <Section title="Your Anthropic API key" hint="Takes priority over everything else, so estimates bill to your own Anthropic account. Stored in this browser only.">
             <input
               type="password"
               autoComplete="off"
               value={settings.apiKey}
               onChange={(e) => set('apiKey', e.target.value.trim())}
               placeholder="sk-ant-…"
+              className="w-full bg-surface-2 rounded-lg px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-line-strong"
+            />
+          </Section>
+
+          <Section title="Access code" hint="Unlocks the server's key instead (the owner sets TALLY_ACCESS_CODE on Vercel). Ignored while your own key is set. Stored in this browser only.">
+            <input
+              type="password"
+              autoComplete="off"
+              value={settings.accessCode}
+              onChange={(e) => set('accessCode', e.target.value.trim())}
+              placeholder="Access code"
               className="w-full bg-surface-2 rounded-lg px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-line-strong"
             />
           </Section>

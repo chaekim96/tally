@@ -129,7 +129,7 @@ export default function Ledger({ note, settings, aiStatus, pendingCount, onEstim
           <p className="text-[11px] text-muted pt-1">{lowConf.length} low-confidence {lowConf.length === 1 ? 'estimate' : 'estimates'} — add detail to those lines for a tighter number.</p>
         )}
         {aiStatus.mode === 'offline' && (
-          <p className="text-[11px] text-warn pt-1">Offline mode: estimates marked “~” are keyword guesses. <button onClick={onOpenSettings} className="underline">Add an API key</button> for Claude estimates.</p>
+          <p className="text-[11px] text-warn pt-1">Offline mode: estimates marked “~” are keyword guesses. <button onClick={onOpenSettings} className="underline">Add your key or the access code</button> for Claude estimates.</p>
         )}
       </div>
 

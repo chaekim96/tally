@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Item, Note, Settings } from '../lib/types';
+import { API_LIMITS, type Item, type Note, type Settings } from '../lib/types';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ledger from './components/Ledger';
 import SettingsDialog from './components/SettingsDialog';
 import Toast, { type ToastMsg } from './components/Toast';
-import { AiRequestError, breakdownTask, checkHealth, estimateLines, type AiStatus } from './lib/ai';
+import { AiRequestError, breakdownTask, checkHealth, estimateLines, type AiStatus, type Credentials } from './lib/ai';
 import { heuristicEstimate } from './lib/heuristic';
 import { newItem, newNote } from './lib/notes';
 import { applyTheme, loadNotes, loadSettings, saveNotes, saveSettings } from './lib/storage';
 import { extractInlineDuration } from './lib/time';
 
 export type SortMode = 'original' | 'longest' | 'shortest';
+
+/** Lines per estimate request; kept under the API's per-request cap. */
+const ESTIMATE_BATCH = 40;
 export type MobileView = 'list' | 'editor' | 'ledger';
 
 export default function App() {
@@ -49,9 +52,10 @@ export default function App() {
   }, []);
   useEffect(() => {
     let cancelled = false;
-    checkHealth(settings.apiKey || undefined).then((s) => { if (!cancelled) setAiStatus(s); });
+    setAiStatus({ mode: 'checking' });
+    checkHealth(creds(settings)).then((s) => { if (!cancelled) setAiStatus(s); });
     return () => { cancelled = true; };
-  }, [settings.apiKey]);
+  }, [settings.apiKey, settings.accessCode]);
 
   // ---- note CRUD ----
   const updateNote = useCallback((id: string, fn: (n: Note) => Note) => {
@@ -135,32 +139,38 @@ export default function App() {
         applyHeuristics(noteId, targets);
         return;
       }
-      const res = await estimateLines(
-        {
-          title: note.title,
-          lines: note.items.map((i) => ({ id: i.id, text: i.text, indent: i.indent })),
-          targetIds: ids,
-        },
-        settingsRef.current.apiKey || undefined,
-      );
-      const byId = new Map(res.estimates.map((e) => [e.id, e]));
-      for (const t of targets) {
-        const e = byId.get(t.id);
-        if (!e) continue;
-        updateItem(noteId, t.id, (cur) =>
-          cur.text === t.text && (cur.source !== 'manual' || opts.force)
-            ? { ...cur, minutes: e.minutes, low: e.low, high: e.high, category: e.category, confidence: e.confidence, rationale: e.rationale, source: 'ai' }
-            : cur,
-        );
+      const lines = note.items
+        .slice(0, API_LIMITS.lines)
+        .map((i) => ({ id: i.id, text: i.text.slice(0, API_LIMITS.lineChars), indent: i.indent }));
+      // Batch so "Re-estimate everything" on a long note stays under the per-request cap.
+      for (let start = 0; start < targets.length; start += ESTIMATE_BATCH) {
+        const batch = targets.slice(start, start + ESTIMATE_BATCH);
+        try {
+          const res = await estimateLines(
+            { title: note.title, lines, targetIds: batch.map((t) => t.id) },
+            creds(settingsRef.current),
+          );
+          const byId = new Map(res.estimates.map((e) => [e.id, e]));
+          for (const t of batch) {
+            const e = byId.get(t.id);
+            if (!e) { applyHeuristics(noteId, [t]); continue; }
+            updateItem(noteId, t.id, (cur) =>
+              cur.text === t.text && (cur.source !== 'manual' || opts.force)
+                ? { ...cur, minutes: e.minutes, low: e.low, high: e.high, category: e.category, confidence: e.confidence, rationale: e.rationale, source: 'ai' }
+                : cur,
+            );
+          }
+        } catch (err) {
+          const e = err as AiRequestError;
+          if (e.code === 'no_key' || e.code === 'bad_key') {
+            setAiStatus({ mode: 'offline', reason: e.code === 'bad_key' ? 'API key rejected' : 'No usable API key' });
+          } else {
+            setToast({ kind: 'warn', text: e.message || 'Estimate failed — used offline fallback.' });
+          }
+          applyHeuristics(noteId, targets.slice(start));
+          return;
+        }
       }
-    } catch (err) {
-      const e = err as AiRequestError;
-      if (e.code === 'no_key' || e.code === 'bad_key') {
-        setAiStatus({ mode: 'offline', reason: e.code === 'bad_key' ? 'API key rejected' : 'No API key configured' });
-      } else {
-        setToast({ kind: 'warn', text: e.message || 'Estimate failed — used offline fallback.' });
-      }
-      applyHeuristics(noteId, targets);
     } finally {
       markPending(ids, false);
     }
@@ -183,14 +193,14 @@ export default function App() {
     const item = note?.items.find((i) => i.id === itemId);
     if (!note || !item || !item.text.trim()) return;
     if (aiRef.current.mode === 'offline') {
-      setToast({ kind: 'warn', text: 'Break down needs an API key. Add one in Settings.' });
+      setToast({ kind: 'warn', text: 'Break down needs your API key or the access code. Add one in Settings.' });
       return;
     }
     markPending([itemId], true);
     try {
       const res = await breakdownTask(
         { title: note.title, text: item.text, siblings: note.items.filter((i) => i.id !== itemId).map((i) => i.text) },
-        settingsRef.current.apiKey || undefined,
+        creds(settingsRef.current),
       );
       const subs = res.steps.map((s) =>
         newItem({ text: s.text, minutes: s.minutes, low: s.minutes, high: s.minutes, category: s.category, confidence: 'medium', rationale: 'From break down', source: 'ai', indent: 1 }),
@@ -293,6 +303,10 @@ export default function App() {
       <Toast msg={toast} onDone={() => setToast(null)} />
     </div>
   );
+}
+
+function creds(s: Settings): Credentials {
+  return { apiKey: s.apiKey || undefined, accessCode: s.accessCode || undefined };
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {

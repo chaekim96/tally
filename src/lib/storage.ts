@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyCapacityMinutes: 6 * 60,
   autoEstimate: true,
   apiKey: '',
+  accessCode: '',
 };
 
 function safeRead<T>(key: string): T | null {

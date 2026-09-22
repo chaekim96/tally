@@ -62,8 +62,8 @@ function localApi(): Plugin {
 export default defineConfig(({ mode }) => {
   // Make .env.local keys visible to the API functions during `vite dev`.
   const env = loadEnv(mode, process.cwd(), '');
-  if (env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
+  for (const name of ['ANTHROPIC_API_KEY', 'TALLY_ACCESS_CODE']) {
+    if (env[name] && !process.env[name]) process.env[name] = env[name];
   }
   return {
     plugins: [react(), tailwindcss(), localApi()],

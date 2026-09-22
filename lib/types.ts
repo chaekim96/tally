@@ -46,11 +46,34 @@ export interface Settings {
   /** Minutes of focused time available per day. */
   dailyCapacityMinutes: number;
   autoEstimate: boolean;
-  /** Optional browser-only key; sent as a header to /api and never stored server-side. */
+  /** Your own Anthropic key. Takes priority over the server key; stored in this browser only. */
   apiKey: string;
+  /** Unlocks the server's key (must match TALLY_ACCESS_CODE on Vercel). Stored in this browser only. */
+  accessCode: string;
 }
 
 // ---- API contracts ----
+
+/** Request caps enforced by the API; the client batches to stay under them. */
+export const API_LIMITS = {
+  lines: 500,
+  lineChars: 300,
+  targets: 50,
+  titleChars: 200,
+  breakdownChars: 500,
+  siblings: 50,
+} as const;
+
+export interface HealthResponse {
+  ok: true;
+  model: string;
+  /** ANTHROPIC_API_KEY is set on the server. */
+  serverKey: boolean;
+  /** TALLY_ACCESS_CODE is set; without it the server key is never used. */
+  accessConfigured: boolean;
+  /** This request's access code unlocks the server key. */
+  serverKeyUsable: boolean;
+}
 
 export interface EstimateRequest {
   title: string;
