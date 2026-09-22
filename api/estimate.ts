@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { CATEGORIES, type EstimateRequest, type EstimateResponse } from '../lib/types';
-import { fail, handleApiError, json, MODEL, resolveClient } from '../lib/ai';
+import { CATEGORIES, type EstimateRequest, type EstimateResponse } from '../lib/types.js';
+import { fail, handleApiError, json, MODEL, resolveClient } from '../lib/ai.js';
 
 const Output = z.object({
   estimates: z.array(

@@ -44,6 +44,16 @@ lib/            types.ts (shared contracts) · ai.ts (server-side Claude helpers
 docs/ROADMAP.md what's next, incl. the AI-execution layer
 ```
 
+## Checks
+
+```bash
+npm run check   # typecheck + verify the api/ functions load under real Node ESM
+```
+
+`api/` files must use explicit `.js` extensions on relative imports — Vite and
+`tsc --noEmit` accept extensionless ones, but Node's ESM loader in a deployed
+function does not. `npm run verify:api` catches that before it ships.
+
 ## Run locally
 
 ```bash

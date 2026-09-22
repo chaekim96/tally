@@ -1,6 +1,6 @@
 // Server-only helpers shared by api/*.ts. Never imported by the browser bundle.
 import Anthropic from '@anthropic-ai/sdk';
-import type { ApiError } from './types';
+import type { ApiError } from './types.js';
 
 export const MODEL = 'claude-opus-5';
 

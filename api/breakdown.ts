@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { CATEGORIES, type BreakdownRequest, type BreakdownResponse } from '../lib/types';
-import { fail, handleApiError, json, MODEL, resolveClient } from '../lib/ai';
+import { CATEGORIES, type BreakdownRequest, type BreakdownResponse } from '../lib/types.js';
+import { fail, handleApiError, json, MODEL, resolveClient } from '../lib/ai.js';
 
 const Output = z.object({
   steps: z.array(

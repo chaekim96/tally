@@ -1,4 +1,4 @@
-import { hasServerKey, json, MODEL } from '../lib/ai';
+import { hasServerKey, json, MODEL } from '../lib/ai.js';
 
 /** GET /api/health → whether the server has a key configured. */
 export async function GET() {
