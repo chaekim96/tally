@@ -40,8 +40,14 @@ async function post<TReq, TRes>(path: string, body: TReq, creds: Credentials): P
     throw new AiRequestError('server', e instanceof Error ? e.message : 'Network error', 0);
   }
   if (!res.ok) {
-    let err: ApiError = { error: 'server', message: `HTTP ${res.status}` };
-    try { err = (await res.json()) as ApiError; } catch { /* keep default */ }
+    // The Vercel Firewall answers a rate-limited request with a bare 429, not our JSON error.
+    let err: ApiError = res.status === 429
+      ? { error: 'rate_limited', message: 'Too many requests. Try again in a minute.' }
+      : { error: 'server', message: `HTTP ${res.status}` };
+    try {
+      const body = (await res.json()) as Partial<ApiError>;
+      if (body?.error && body.message) err = body as ApiError;
+    } catch { /* not JSON: keep the default */ }
     throw new AiRequestError(err.error, err.message, res.status);
   }
   return (await res.json()) as TRes;
@@ -52,6 +58,7 @@ export async function checkHealth(creds: Credentials): Promise<AiStatus> {
   if (creds.apiKey) return { mode: 'browser' };
   try {
     const res = await fetch('/api/health', { headers: headers({ accessCode: creds.accessCode }) });
+    if (res.status === 429) return { mode: 'offline', reason: 'Too many requests. Try again in a minute' };
     if (!res.ok) return { mode: 'offline', reason: `API unavailable (${res.status})` };
     const h = (await res.json()) as HealthResponse;
     if (h.serverKeyUsable) return { mode: 'server' };
