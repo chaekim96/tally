@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Download, Upload, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import type { Note, Settings } from '../../lib/types';
 import type { AiStatus } from '../lib/ai';
+import { useModal } from '../lib/useModal';
+import { fmtMinutes } from '../lib/time';
+import Alert from './ui/Alert';
+import { Stepper, Switch } from './ui/controls';
 
 interface Props {
   settings: Settings;
@@ -10,17 +13,18 @@ interface Props {
   onChange: (s: Settings) => void;
   onImport: (notes: Note[]) => void;
   onClose: () => void;
+  onToast: (text: string) => void;
 }
 
-export default function SettingsDialog({ settings, notes, aiStatus, onChange, onImport, onClose }: Props) {
+/**
+ * Settings as an inset grouped sheet (settings.md, sheets.md). Appearance is
+ * intentionally absent: Tally follows the system (dark-mode.md).
+ */
+export default function SettingsDialog({ settings, notes, aiStatus, onChange, onImport, onClose, onToast }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [capacityHours, setCapacityHours] = useState(String(settings.dailyCapacityMinutes / 60));
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const doneRef = useRef<HTMLButtonElement>(null);
+  const [pendingImport, setPendingImport] = useState<Note[] | null>(null);
+  const ref = useModal<HTMLDivElement>(() => { if (!pendingImport) onClose(); }, () => doneRef.current);
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => onChange({ ...settings, [k]: v });
 
@@ -33,118 +37,140 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
     URL.revokeObjectURL(a.href);
   };
 
-  const importJson = async (file: File) => {
+  const readImport = async (file: File) => {
     try {
       const data = JSON.parse(await file.text());
       const list: Note[] = Array.isArray(data) ? data : data.notes;
       if (!Array.isArray(list)) throw new Error('bad');
-      if (confirm(`Replace your ${notes.length} notes with ${list.length} from this file?`)) onImport(list);
+      setPendingImport(list);
     } catch {
-      alert('That file is not a Tally backup.');
+      onToast('That file isn’t a Tally backup.');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
   const aiLine =
-    aiStatus.mode === 'browser' ? 'Using your own key — usage is billed to your Anthropic account.'
-    : aiStatus.mode === 'server' ? 'Using the server key, unlocked by your access code.'
-    : aiStatus.mode === 'offline' ? `Offline: ${aiStatus.reason}. Estimates use built-in heuristics.`
+    aiStatus.mode === 'browser' ? 'Using your own key. Usage is billed to your Anthropic account.'
+    : aiStatus.mode === 'server' ? 'Using the server’s key, unlocked by your access code.'
+    : aiStatus.mode === 'offline' ? `Offline: ${aiStatus.reason}. Estimates use built-in keyword guesses.`
     : 'Checking…';
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full sm:w-[440px] max-h-[92vh] overflow-y-auto bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl border border-line row-in">
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-line">
-          <h2 className="font-semibold">Settings</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-2"><X className="w-4 h-4" /></button>
-        </div>
+    <div className="fixed inset-0 z-40 flex items-end md:items-center justify-center bg-black/35 fade-in" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
+        className="w-full md:w-[480px] max-h-[92vh] flex flex-col bg-grouped rounded-t-[14px] md:rounded-[14px] shadow-2xl sheet-in md:pop-in outline-none overflow-hidden"
+      >
+        <header className="relative h-14 shrink-0 flex items-center justify-center border-b-[0.5px] border-separator">
+          <h2 id="settings-title" className="text-[17px] font-semibold">Settings</h2>
+          <button ref={doneRef} onClick={onClose} className="tap absolute right-2 h-9 px-3 rounded-full text-[17px] font-semibold text-tint hover:bg-tint-soft">
+            Done
+          </button>
+        </header>
 
-        <div className="px-5 py-4 space-y-6 text-sm">
-          <Section title="Appearance">
-            <div className="flex gap-1 bg-surface-2 p-1 rounded-lg w-fit">
-              {(['system', 'light', 'dark'] as const).map((t) => (
-                <button key={t} onClick={() => set('theme', t)} className={`px-3 py-1.5 rounded-md capitalize text-xs font-medium transition ${settings.theme === t ? 'bg-surface shadow-sm' : 'text-muted hover:text-ink'}`}>{t}</button>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Daily capacity" hint="Focused hours you realistically have per day. The ledger compares remaining work against this.">
-            <div className="flex items-center gap-2">
-              <input
-                type="number" min={1} max={16} step={0.5}
-                value={capacityHours}
-                onChange={(e) => setCapacityHours(e.target.value)}
-                onBlur={() => { const h = parseFloat(capacityHours); if (h > 0) set('dailyCapacityMinutes', Math.round(h * 60)); else setCapacityHours(String(settings.dailyCapacityMinutes / 60)); }}
-                className="w-20 bg-surface-2 rounded-lg px-3 py-2 font-mono tnum outline-none focus:ring-2 focus:ring-line-strong"
+        <div className="overflow-y-auto px-4 pt-5 pb-8 space-y-7 safe-pb">
+          <Group title="Planning" footer="The focused hours you realistically have in a day. The ledger compares what’s left against this.">
+            <Row label="Daily Capacity">
+              <Stepper
+                label="Daily capacity"
+                value={settings.dailyCapacityMinutes}
+                onChange={(v) => set('dailyCapacityMinutes', v)}
+                min={60} max={16 * 60} step={30} bigStep={120}
+                format={(v) => fmtMinutes(v)}
               />
-              <span className="text-muted">hours / day</span>
-            </div>
-          </Section>
+            </Row>
+          </Group>
 
-          <Section title="Estimates">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={settings.autoEstimate} onChange={(e) => set('autoEstimate', e.target.checked)} className="accent-[var(--accent)] w-4 h-4" />
-              <span>Estimate automatically as I type</span>
-            </label>
-            <p className="text-xs text-muted mt-2">{aiLine}</p>
-          </Section>
+          <Group title="Estimates" footer={aiLine}>
+            <Row label="Estimate as You Type">
+              <Switch label="Estimate as you type" checked={settings.autoEstimate} onChange={(v) => set('autoEstimate', v)} />
+            </Row>
+          </Group>
 
-          <Section title="Your Anthropic API key" hint="Takes priority over everything else, so estimates bill to your own Anthropic account. Stored in this browser only.">
-            <input
-              type="password"
-              autoComplete="off"
-              value={settings.apiKey}
-              onChange={(e) => set('apiKey', e.target.value.trim())}
-              placeholder="sk-ant-…"
-              className="w-full bg-surface-2 rounded-lg px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-line-strong"
-            />
-          </Section>
+          <Group
+            title="Claude"
+            footer="Your own key always takes priority, and usage goes on your Anthropic account. Without one, the access code unlocks the server’s key. Both stay in this browser."
+          >
+            <FieldRow label="Your API Key" value={settings.apiKey} placeholder="Optional" onChange={(v) => set('apiKey', v)} />
+            <FieldRow label="Access Code" value={settings.accessCode} placeholder="Optional" onChange={(v) => set('accessCode', v)} />
+          </Group>
 
-          <Section title="Access code" hint="Unlocks the server's key instead (the owner sets TALLY_ACCESS_CODE on Vercel). Ignored while your own key is set. Stored in this browser only.">
-            <input
-              type="password"
-              autoComplete="off"
-              value={settings.accessCode}
-              onChange={(e) => set('accessCode', e.target.value.trim())}
-              placeholder="Access code"
-              className="w-full bg-surface-2 rounded-lg px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-line-strong"
-            />
-          </Section>
+          <Group title="Backup" footer="Notes are stored in this browser. Export a backup before clearing site data.">
+            <ActionRow onClick={exportJson}>Export Backup</ActionRow>
+            <ActionRow onClick={() => fileRef.current?.click()}>Import Backup…</ActionRow>
+            <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && readImport(e.target.files[0])} />
+          </Group>
 
-          <Section title="Backup">
-            <div className="flex gap-2">
-              <button onClick={exportJson} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-2 hover:bg-line text-xs font-medium transition"><Download className="w-3.5 h-3.5" /> Export JSON</button>
-              <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-2 hover:bg-line text-xs font-medium transition"><Upload className="w-3.5 h-3.5" /> Import JSON</button>
-              <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
-            </div>
-            <p className="text-xs text-muted mt-2">Notes live in this browser's local storage. Export before clearing site data.</p>
-          </Section>
-
-          <Section title="Shortcuts">
-            <ul className="grid grid-cols-2 gap-y-1.5 text-xs text-ink-2">
-              <Key k="⌘N" v="New note" /><Key k="⌘," v="Settings" />
-              <Key k="Enter" v="New line" /><Key k="Tab / ⇧Tab" v="Indent / outdent" />
-              <Key k="⌘Enter" v="Toggle done" /><Key k="⌥↑ / ⌥↓" v="Move line" />
-              <Key k="⌘E" v="Estimate line" /><Key k="⌘B" v="Break down line" />
-            </ul>
-          </Section>
+          <Group title="Keyboard Shortcuts">
+            {[
+              ['New Note', '⌘N'], ['Settings', '⌘,'], ['New Line', '↩'], ['Indent · Outdent', '⇥ · ⇧⇥'],
+              ['Complete Item', '⌘↩'], ['Move Line', '⌥↑ · ⌥↓'], ['Estimate Again', '⌘E'], ['Break Down', '⌘B'],
+            ].map(([label, keys]) => (
+              <Row key={label} label={label}><kbd className="tabular text-[15px] text-muted">{keys}</kbd></Row>
+            ))}
+          </Group>
         </div>
       </div>
+
+      {pendingImport && (
+        <Alert
+          title="Replace Your Notes?"
+          message={`Your ${notes.length} ${notes.length === 1 ? 'note' : 'notes'} will be replaced by ${pendingImport.length} from this backup.`}
+          confirmLabel="Replace"
+          destructive
+          onConfirm={() => { onImport(pendingImport); setPendingImport(null); }}
+          onCancel={() => setPendingImport(null)}
+        />
+      )}
     </div>
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Group({ title, footer, children }: { title: string; footer?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted mb-2">{title}</div>
+    <section aria-label={title}>
+      <h3 className="px-4 pb-1.5 text-[13px] font-semibold text-muted">{title}</h3>
+      <div className="card">{children}</div>
+      {footer && <p className="px-4 pt-1.5 text-[13px] text-muted leading-snug">{footer}</p>}
+    </section>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="inset-row flex items-center justify-between gap-3 min-h-11 pl-4 pr-3 py-1.5 text-[15px]">
+      <span>{label}</span>
       {children}
-      {hint && <p className="text-xs text-muted mt-2">{hint}</p>}
     </div>
   );
 }
 
-function Key({ k, v }: { k: string; v: string }) {
+function FieldRow({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (v: string) => void }) {
   return (
-    <li className="flex items-center gap-2"><kbd className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-surface-2 border border-line">{k}</kbd>{v}</li>
+    <label className="inset-row flex items-center gap-3 min-h-11 pl-4 pr-3 text-[15px]">
+      <span className="shrink-0">{label}</span>
+      <input
+        type="password"
+        autoComplete="off"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => onChange(e.target.value.trim())}
+        placeholder={placeholder}
+        className="flex-1 min-w-0 h-8 bg-transparent text-right text-[15px] rounded-[6px] px-1"
+      />
+    </label>
+  );
+}
+
+function ActionRow({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} className="inset-row w-full min-h-11 px-4 text-left text-[15px] text-tint hover:bg-fill">
+      {children}
+    </button>
   );
 }

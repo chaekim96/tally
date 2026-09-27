@@ -1,10 +1,13 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AlignLeft, ArrowDownWideNarrow, ArrowUpNarrowWide, Check, ChevronLeft, Copy, EyeOff, PanelRight, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, Ellipsis, PanelRight, Plus, Trash2 } from 'lucide-react';
 import type { Item, Note } from '../../lib/types';
 import type { SortMode } from '../App';
 import type { AiStatus } from '../lib/ai';
-import { newItem, toMarkdown } from '../lib/notes';
+import { newItem, noteTitle, toMarkdown, totals } from '../lib/notes';
 import ItemRow from './ItemRow';
+import Alert from './ui/Alert';
+import Menu from './ui/Menu';
+import { ToolButton } from './ui/controls';
 
 interface Props {
   note: Note;
@@ -23,12 +26,19 @@ interface Props {
   onBack: () => void;
   ledgerOpen: boolean;
   onToggleLedger: () => void;
+  onToast: (text: string) => void;
 }
+
+const NEXT_SORT: Record<SortMode, SortMode> = { original: 'longest', longest: 'shortest', shortest: 'original' };
+const SORT_LABEL: Record<SortMode, string> = { original: 'Original Order', longest: 'Longest First', shortest: 'Shortest First' };
 
 export default function Editor(p: Props) {
   const { note, sortMode, hideDone } = p;
   const inputs = useRef<Map<string, HTMLInputElement>>(new Map());
-  const [copied, setCopied] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const [titleHidden, setTitleHidden] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const register = useCallback((id: string, el: HTMLInputElement | null) => {
     if (el) inputs.current.set(id, el); else inputs.current.delete(id);
@@ -53,6 +63,16 @@ export default function Editor(p: Props) {
     const pf = pendingFocus.current;
     if (pf && applyFocus(pf.id, pf.caret)) pendingFocus.current = null;
   });
+
+  // The large title collapses into the toolbar once it scrolls under it (toolbars.md › Phone: large titles).
+  useEffect(() => {
+    const root = scrollRef.current, target = titleRef.current;
+    if (!root || !target) return;
+    const toolbar = parseFloat(getComputedStyle(root).paddingTop) || 56;
+    const io = new IntersectionObserver(([e]) => setTitleHidden(!e.isIntersecting), { root, rootMargin: `-${toolbar}px 0px 0px 0px` });
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
 
   const visible = useMemo(() => {
     let list = note.items;
@@ -141,99 +161,119 @@ export default function Editor(p: Props) {
   const copyMarkdown = async () => {
     try {
       await navigator.clipboard.writeText(toMarkdown(note));
-      setCopied(true); setTimeout(() => setCopied(false), 1600);
-    } catch { /* clipboard blocked */ }
+      p.onToast('Copied as Markdown.');
+    } catch {
+      p.onToast('Couldn’t copy. Your browser blocked clipboard access.');
+    }
   };
 
-  const date = new Date(note.updatedAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const t = totals(note.items);
+  const date = new Date(note.updatedAt).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const title = noteTitle(note);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 md:px-6 pt-3 pb-2 safe-pt">
-        <button onClick={p.onBack} className="md:hidden p-1.5 -ml-1 rounded-lg text-ink-2 hover:bg-surface-2"><ChevronLeft className="w-5 h-5" /></button>
-        <span className="hidden sm:inline text-[11px] font-medium uppercase tracking-[0.12em] text-muted whitespace-nowrap">{date}</span>
-        <div className="ml-auto flex items-center gap-1">
-          <Segmented value={sortMode} onChange={p.onSort} />
-          <IconBtn title={hideDone ? 'Show done' : 'Hide done'} active={hideDone} onClick={() => p.onHideDone(!hideDone)}><EyeOff className="w-4 h-4" /></IconBtn>
-          <IconBtn title="Copy as Markdown" onClick={copyMarkdown}>{copied ? <Check className="w-4 h-4 text-ok" /> : <Copy className="w-4 h-4" />}</IconBtn>
-          <IconBtn title="Toggle ledger" active={p.ledgerOpen} onClick={p.onToggleLedger}><PanelRight className="w-4 h-4" /></IconBtn>
-          <IconBtn title="Delete note" onClick={() => confirm('Delete this note?') && p.onDelete()} danger><Trash2 className="w-4 h-4" /></IconBtn>
+    <div className="relative flex-1 min-h-0">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto pt-[var(--toolbar-h)]">
+        <div className="max-w-[860px] mx-auto px-4 md:px-8 pb-28">
+          {/* Large title */}
+          <input
+            ref={titleRef}
+            value={note.title}
+            onChange={(e) => p.onUpdate((n) => ({ ...n, title: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); focus(note.items[0]?.id); } }}
+            placeholder="Untitled"
+            aria-label="Note title"
+            className="bare w-full bg-transparent outline-none text-[28px] md:text-[30px] leading-tight font-bold tracking-[-0.01em] pt-1"
+          />
+          <p className="text-[13px] text-muted mt-1 tabular">
+            {date}{t.count > 0 && ` · ${t.count} ${t.count === 1 ? 'item' : 'items'}`}{t.doneCount > 0 && `, ${t.doneCount} completed`}
+          </p>
+
+          {/* Column headings; the estimate heading sorts, like a Mac table (lists-and-tables.md › Desktop) */}
+          <div className="mt-5 flex items-center h-7 text-[12px] font-medium text-muted border-b-[0.5px] border-separator">
+            <span className="pl-[42px]">Item</span>
+            <span className="ml-auto w-[76px] md:w-[92px] text-right">Category</span>
+            <button
+              onClick={() => p.onSort(NEXT_SORT[sortMode])}
+              aria-label={`Sort by estimate. Currently ${SORT_LABEL[sortMode]}`}
+              className={`w-[64px] md:w-[84px] h-7 flex items-center justify-end gap-0.5 rounded-[6px] hover:text-ink ${sortMode !== 'original' ? 'text-tint' : ''}`}
+            >
+              Estimate
+              {sortMode === 'longest' && <ArrowDown className="w-3 h-3" strokeWidth={2.25} aria-hidden />}
+              {sortMode === 'shortest' && <ArrowUp className="w-3 h-3" strokeWidth={2.25} aria-hidden />}
+            </button>
+          </div>
+
+          {visible.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              pending={p.pending.has(item.id)}
+              aiAvailable={p.aiStatus.mode === 'server' || p.aiStatus.mode === 'browser'}
+              register={register}
+              onChange={(text) => { p.onUpdateItem(item.id, (i) => ({ ...i, text })); p.onTyped(item.id); }}
+              onToggle={() => p.onUpdateItem(item.id, (i) => ({ ...i, done: !i.done }))}
+              onKeyDown={(e) => onKey(e, item)}
+              onCategory={(c) => p.onUpdateItem(item.id, (i) => ({ ...i, category: c }))}
+              onManualMinutes={(m) => p.onUpdateItem(item.id, (i) => ({ ...i, minutes: m, low: m, high: m, confidence: 'high', rationale: 'Set by you', source: 'manual' }))}
+              onEstimate={() => p.onEstimate([item.id], true)}
+              onBreakdown={() => p.onBreakdown(item.id)}
+              onRemove={() => remove(item.id)}
+            />
+          ))}
+          {sortMode === 'original' && !hideDone && (
+            <button onClick={append} className="tap mt-1 h-11 pl-1 pr-3 flex items-center gap-2.5 text-[15px] text-tint rounded-[8px] hover:bg-tint-soft">
+              <Plus className="w-[18px] h-[18px]" strokeWidth={2} /> Add Item
+            </button>
+          )}
+          {visible.length === 0 && hideDone && (
+            <p className="py-10 text-center text-[15px] text-muted">All items are completed.</p>
+          )}
         </div>
       </div>
 
-      {/* Title */}
-      <div className="px-4 md:px-8 pt-2 pb-1">
-        <input
-          value={note.title}
-          onChange={(e) => p.onUpdate((n) => ({ ...n, title: e.target.value }))}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); focus(note.items[0]?.id); } }}
-          placeholder="Untitled"
-          className="w-full bg-transparent outline-none text-[26px] md:text-[30px] font-semibold tracking-tight placeholder:text-line-strong"
-        />
-      </div>
-
-      {/* Column headers */}
-      <div className="px-4 md:px-8 mt-2 flex items-center text-[10px] font-semibold uppercase tracking-[0.14em] text-muted border-b border-line pb-1.5">
-        <span className="pl-8">Item</span>
-        <span className="ml-auto w-[64px] md:w-[88px] text-right">Type</span>
-        <span className="w-[76px] md:w-[92px] text-right border-l border-line ml-3 pl-3">Est.</span>
-      </div>
-
-      {/* Rows */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-24">
-        {visible.map((item) => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            pending={p.pending.has(item.id)}
-            aiAvailable={p.aiStatus.mode === 'server' || p.aiStatus.mode === 'browser'}
-            draggable={sortMode === 'original'}
-            register={register}
-            onChange={(text) => { p.onUpdateItem(item.id, (i) => ({ ...i, text })); p.onTyped(item.id); }}
-            onToggle={() => p.onUpdateItem(item.id, (i) => ({ ...i, done: !i.done }))}
-            onKeyDown={(e) => onKey(e, item)}
-            onCategory={(c) => p.onUpdateItem(item.id, (i) => ({ ...i, category: c }))}
-            onManualMinutes={(m) => p.onUpdateItem(item.id, (i) => ({ ...i, minutes: m, low: m, high: m, confidence: 'high', rationale: 'Set by you', source: 'manual' }))}
-            onEstimate={() => p.onEstimate([item.id], true)}
-            onBreakdown={() => p.onBreakdown(item.id)}
-            onRemove={() => remove(item.id)}
+      {/* Scroll edge + floating toolbar: the functional layer, the only place glass is used */}
+      <div aria-hidden className="scroll-edge pointer-events-none absolute inset-x-0 top-0" />
+      <div className="absolute inset-x-0 top-0 h-[var(--toolbar-h)] safe-pt px-3 md:px-4 flex items-center gap-2 pointer-events-none">
+        <div className="md:hidden glass rounded-full pointer-events-auto">
+          <ToolButton label="Notes" onClick={p.onBack}><ChevronLeft className="w-5 h-5" /></ToolButton>
+        </div>
+        <div aria-hidden={!titleHidden} className={`flex-1 min-w-0 text-center md:text-left md:pl-4 text-[15px] font-semibold truncate transition-opacity duration-200 ${titleHidden ? 'opacity-100' : 'opacity-0'}`}>
+          {title}
+        </div>
+        <div className="glass rounded-full flex items-center p-0.5 pointer-events-auto">
+          <ToolButton label={p.ledgerOpen ? 'Hide Ledger' : 'Show Ledger'} active={p.ledgerOpen} onClick={p.onToggleLedger}>
+            <PanelRight className="w-[18px] h-[18px]" />
+          </ToolButton>
+          <Menu
+            label="More"
+            trigger={<Ellipsis className="w-5 h-5" />}
+            triggerClassName="tap w-9 h-9 grid place-items-center rounded-full text-ink hover:bg-fill"
+            entries={[
+              { kind: 'section', label: 'Sort By' },
+              ...(['original', 'longest', 'shortest'] as SortMode[]).map((m) => ({
+                kind: 'radio' as const, label: SORT_LABEL[m], checked: sortMode === m, onSelect: () => p.onSort(m),
+              })),
+              { kind: 'divider' },
+              { kind: 'checkbox', label: 'Hide Completed', checked: hideDone, onSelect: () => p.onHideDone(!hideDone) },
+              { kind: 'item', label: 'Copy as Markdown', icon: <Copy className="w-4 h-4" />, onSelect: copyMarkdown },
+              { kind: 'divider' },
+              { kind: 'item', label: 'Delete Note…', destructive: true, icon: <Trash2 className="w-4 h-4" />, onSelect: () => setConfirmDelete(true) },
+            ]}
           />
-        ))}
-        {sortMode === 'original' && !hideDone && (
-          <button onClick={append} className="mt-1 pl-8 py-3 flex items-center gap-2 text-sm text-muted hover:text-ink transition w-full text-left">
-            <Plus className="w-4 h-4" /> Add item
-          </button>
-        )}
-        {visible.length === 0 && (
-          <div className="py-10 text-center text-sm text-muted">{hideDone ? 'Everything is done. Nice.' : 'Start typing.'}</div>
-        )}
+        </div>
       </div>
-    </div>
-  );
-}
 
-function Segmented({ value, onChange }: { value: SortMode; onChange: (m: SortMode) => void }) {
-  const opts: { v: SortMode; icon: React.ReactNode; label: string }[] = [
-    { v: 'original', icon: <AlignLeft className="w-3.5 h-3.5" />, label: 'Original' },
-    { v: 'longest', icon: <ArrowDownWideNarrow className="w-3.5 h-3.5" />, label: 'Longest' },
-    { v: 'shortest', icon: <ArrowUpNarrowWide className="w-3.5 h-3.5" />, label: 'Shortest' },
-  ];
-  return (
-    <div className="flex items-center bg-surface-2 p-0.5 rounded-lg mr-1">
-      {opts.map((o) => (
-        <button key={o.v} title={o.label} onClick={() => onChange(o.v)} className={`px-2 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition ${value === o.v ? 'bg-surface shadow-sm text-ink' : 'text-muted hover:text-ink'}`}>
-          {o.icon}<span className="hidden sm:inline">{o.label}</span>
-        </button>
-      ))}
+      {confirmDelete && (
+        <Alert
+          title={`Delete “${title}”?`}
+          message={t.count ? `Its ${t.count} ${t.count === 1 ? 'item' : 'items'} will be deleted too. This can’t be undone.` : 'This can’t be undone.'}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={() => { setConfirmDelete(false); p.onDelete(); }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
-  );
-}
-
-function IconBtn({ children, title, onClick, active, danger, className = '' }: { children: React.ReactNode; title: string; onClick: () => void; active?: boolean; danger?: boolean; className?: string }) {
-  return (
-    <button title={title} onClick={onClick} className={`p-2 rounded-lg transition ${active ? 'bg-surface-2 text-ink' : 'text-muted hover:bg-surface-2'} ${danger ? 'hover:text-danger' : 'hover:text-ink'} ${className}`}>
-      {children}
-    </button>
   );
 }

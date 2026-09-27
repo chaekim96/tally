@@ -42,7 +42,6 @@ export interface Note {
 }
 
 export interface Settings {
-  theme: 'system' | 'light' | 'dark';
   /** Minutes of focused time available per day. */
   dailyCapacityMinutes: number;
   autoEstimate: boolean;

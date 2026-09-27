@@ -4,7 +4,6 @@ export const NOTES_KEY = 'tally.notes.v1';
 export const SETTINGS_KEY = 'tally.settings.v1';
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
   dailyCapacityMinutes: 6 * 60,
   autoEstimate: true,
   apiKey: '',
@@ -52,17 +51,19 @@ export function saveNotes(notes: Note[]) {
 }
 
 export function loadSettings(): Settings {
-  return { ...DEFAULT_SETTINGS, ...(safeRead<Partial<Settings>>(SETTINGS_KEY) ?? {}) };
+  // Keep only known keys, so settings from older versions (e.g. theme) drop out.
+  const saved = safeRead<Partial<Settings>>(SETTINGS_KEY) ?? {};
+  const out = { ...DEFAULT_SETTINGS };
+  for (const k of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
+    if (saved[k] !== undefined && typeof saved[k] === typeof DEFAULT_SETTINGS[k]) (out as Record<string, unknown>)[k] = saved[k];
+  }
+  return out;
 }
 
 export function saveSettings(s: Settings) {
   safeWrite(SETTINGS_KEY, s);
 }
 
-export function applyTheme(theme: Settings['theme']) {
-  const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', dark);
-}
 
 export function uid(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto

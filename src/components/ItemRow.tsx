@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ListTree, Sparkles, X } from 'lucide-react';
+import { Check, ListTree, LoaderCircle, Sparkles, X } from 'lucide-react';
 import type { Category, Item } from '../../lib/types';
 import { CATEGORIES } from '../../lib/types';
-import { CATEGORY_STYLE } from '../lib/notes';
 import { fmtMinutes, parseDuration } from '../lib/time';
 
 interface Props {
   item: Item;
   pending: boolean;
   aiAvailable: boolean;
-  draggable: boolean;
   register: (id: string, el: HTMLInputElement | null) => void;
   onChange: (text: string) => void;
   onToggle: () => void;
@@ -20,6 +18,8 @@ interface Props {
   onBreakdown: () => void;
   onRemove: () => void;
 }
+
+const INDENT = 28;
 
 export default function ItemRow({ item, pending, aiAvailable, register, onChange, onToggle, onKeyDown, onCategory, onManualMinutes, onEstimate, onBreakdown, onRemove }: Props) {
   const [editing, setEditing] = useState(false);
@@ -34,76 +34,68 @@ export default function ItemRow({ item, pending, aiAvailable, register, onChange
     if (m != null) onManualMinutes(m);
     setEditing(false);
   };
-
-  const cycleCategory = () => {
-    const i = CATEGORIES.indexOf(item.category);
-    onCategory(CATEGORIES[(i + 1) % CATEGORIES.length]);
-  };
+  const cycleCategory = () => onCategory(CATEGORIES[(CATEGORIES.indexOf(item.category) + 1) % CATEGORIES.length]);
 
   const hasText = item.text.trim().length > 0;
   const est = item.minutes;
-  const estTone =
-    est == null || est === 0 ? 'text-muted'
-    : est >= 120 ? 'text-danger'
-    : est >= 45 ? 'text-warn'
-    : 'text-ok';
-  const range = item.low != null && item.high != null && item.high !== item.low ? `${fmtMinutes(item.low)} – ${fmtMinutes(item.high)}` : null;
-  const tooltip = [
-    item.rationale,
-    range ? `Range: ${range}` : null,
-    item.confidence ? `Confidence: ${item.confidence}` : null,
-    item.source ? `Source: ${item.source}` : null,
-  ].filter(Boolean).join('\n');
+  const range = item.low != null && item.high != null && item.high !== item.low ? `${fmtMinutes(item.low)} to ${fmtMinutes(item.high)}` : null;
+  const detail = [item.rationale, range && `Range: ${range}`, item.confidence && `Confidence: ${item.confidence}`, item.source && `Source: ${item.source}`]
+    .filter(Boolean).join('\n');
+  const spoken = est == null ? 'Not estimated' : est === 0 ? 'Not a task' : `${fmtMinutes(est)}${range ? `, ${range}` : ''}`;
 
   return (
-    <div className={`group flex items-center min-h-[42px] border-b border-line/70 row-in ${item.done ? 'opacity-55' : ''}`}>
-      {/* Checkbox */}
+    <div className="row group relative flex items-center gap-1 min-h-[44px]" style={{ paddingLeft: item.indent ? INDENT : 0 }}>
+      {/* Inset separator starts at the text, like Reminders (lists-and-tables.md) */}
+      <span aria-hidden className="absolute bottom-0 right-0 border-b-[0.5px] border-separator" style={{ left: (item.indent ? INDENT : 0) + 36 }} />
+
       <button
+        role="checkbox"
+        aria-checked={item.done}
+        aria-label={item.text.trim() ? `Complete “${item.text.trim()}”` : 'Complete item'}
         onClick={onToggle}
-        aria-label={item.done ? 'Mark not done' : 'Mark done'}
-        className={`shrink-0 w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition ${item.done ? 'bg-ink border-ink text-canvas' : 'border-line-strong hover:border-ink'}`}
-        style={{ marginLeft: item.indent ? 26 : 2 }}
+        className="tap shrink-0 w-8 h-8 grid place-items-center rounded-full"
       >
-        {item.done && <Check className="w-3 h-3" strokeWidth={3} />}
+        <span className={`w-[21px] h-[21px] rounded-full grid place-items-center transition-colors ${item.done ? 'bg-tint text-on-tint' : 'border-[1.5px] border-control group-hover:border-ink-2'}`}>
+          {item.done && <Check className="w-3 h-3" strokeWidth={3.25} />}
+        </span>
       </button>
 
-      {/* Text */}
       <input
         ref={(el) => register(item.id, el)}
         value={item.text}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder={item.indent ? 'Sub-task' : 'What needs doing?'}
+        placeholder={item.indent ? 'Subtask' : 'New item'}
+        aria-label={item.indent ? 'Subtask' : 'Item'}
         spellCheck={false}
-        className={`flex-1 min-w-0 bg-transparent outline-none py-2 ml-3 text-[15px] placeholder:text-line-strong ${item.done ? 'line-through' : ''} ${item.indent ? 'text-ink-2' : ''}`}
+        className={`bare row-text flex-1 min-w-0 text-ellipsis bg-transparent outline-none py-2.5 ml-1.5 ${item.done ? 'text-muted' : item.indent ? 'text-ink-2' : 'text-ink'}`}
       />
 
-      {/* Row actions (hover) */}
+      {/* Hover actions float over the end of the text so they never take width from it */}
       {hasText && (
-        <div className="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition mr-1">
+        <div className="absolute right-[140px] md:right-[176px] top-1/2 -translate-y-1/2 hidden md:flex items-center pl-3 bg-surface shadow-[-16px_0_12px_-4px_var(--surface)] opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
           {aiAvailable && item.indent === 0 && (
-            <button title="Break down into sub-tasks (⌘B)" onClick={onBreakdown} className="p-1.5 rounded-md text-muted hover:text-accent hover:bg-accent-soft"><ListTree className="w-3.5 h-3.5" /></button>
+            <RowAction label="Break Down into Subtasks (⌘B)" onClick={onBreakdown}><ListTree className="w-4 h-4" /></RowAction>
           )}
-          <button title="Re-estimate (⌘E)" onClick={onEstimate} className="p-1.5 rounded-md text-muted hover:text-accent hover:bg-accent-soft"><Sparkles className="w-3.5 h-3.5" /></button>
-          <button title="Remove line" onClick={onRemove} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft"><X className="w-3.5 h-3.5" /></button>
+          <RowAction label="Estimate Again (⌘E)" onClick={onEstimate}><Sparkles className="w-4 h-4" /></RowAction>
+          <RowAction label="Delete Item" onClick={onRemove}><X className="w-4 h-4" /></RowAction>
         </div>
       )}
 
-      {/* Category */}
-      <div className="w-[64px] md:w-[88px] flex justify-end shrink-0">
+      <div className="w-[76px] md:w-[92px] flex justify-end shrink-0">
         {hasText && (
           <button
             onClick={cycleCategory}
-            title="Click to change category"
-            className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-[3px] rounded-md transition ${CATEGORY_STYLE[item.category]} ${pending ? 'estimating' : ''}`}
+            aria-label={`Category: ${item.category}. Change category`}
+            title="Change category"
+            className={`chip cat-${item.category} text-[12px] font-medium px-2 h-[22px] rounded-full whitespace-nowrap ${pending ? 'estimating' : ''}`}
           >
             {item.category}
           </button>
         )}
       </div>
 
-      {/* Estimate gutter — the "ledger" column */}
-      <div className="w-[76px] md:w-[92px] shrink-0 flex justify-end border-l border-line ml-3 pl-3 self-stretch items-center">
+      <div className="w-[64px] md:w-[84px] shrink-0 flex justify-end items-center self-stretch pl-2">
         {editing ? (
           <input
             ref={editRef}
@@ -112,20 +104,30 @@ export default function ItemRow({ item, pending, aiAvailable, register, onChange
             onBlur={commit}
             onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }}
             placeholder="45m"
-            className="w-full bg-surface-2 rounded-md px-1.5 py-1 text-right font-mono tnum text-[13px] outline-none ring-2 ring-accent/50"
+            aria-label="Time estimate"
+            className="w-full h-7 bg-fill rounded-[7px] px-2 text-right tabular text-[14px]"
           />
         ) : pending ? (
-          <Sparkles className="w-3.5 h-3.5 text-accent estimating" />
+          <LoaderCircle className="w-4 h-4 text-muted animate-spin motion-reduce:animate-none" aria-label="Estimating" />
         ) : hasText ? (
           <button
             onClick={startEdit}
-            title={tooltip || 'Click to set manually'}
-            className={`font-mono tnum text-[13px] tabular-nums px-1 rounded hover:bg-surface-2 transition ${estTone} ${item.source === 'manual' ? 'underline decoration-dotted underline-offset-4' : ''}`}
+            title={detail || 'Set time manually'}
+            aria-label={`Estimate: ${spoken}. Edit estimate`}
+            className={`tabular text-[14px] px-1.5 h-7 rounded-[7px] hover:bg-fill transition-colors ${est == null || est === 0 || item.source === 'heuristic' || item.done ? 'text-muted' : 'text-ink'} ${item.source === 'manual' ? 'underline decoration-dotted underline-offset-4' : ''}`}
           >
-            {est == null ? <span className="text-line-strong">·</span> : est === 0 ? <span className="text-muted">—</span> : `${item.source === 'heuristic' ? '~' : ''}${fmtMinutes(est, { compact: true })}`}
+            {est == null ? '–' : est === 0 ? '—' : `${item.source === 'heuristic' ? '~' : ''}${fmtMinutes(est, { compact: true })}`}
           </button>
         ) : null}
       </div>
     </div>
+  );
+}
+
+function RowAction({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button aria-label={label} title={label} onClick={onClick} className="w-7 h-7 grid place-items-center rounded-full text-muted hover:text-tint hover:bg-tint-soft">
+      {children}
+    </button>
   );
 }

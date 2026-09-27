@@ -73,25 +73,3 @@ export function toMarkdown(note: Note): string {
   lines.push('', `**Total** ${fmtMinutes(t.total)}  ·  **Remaining** ${fmtMinutes(t.remaining)}`);
   return lines.join('\n');
 }
-
-export const CATEGORY_STYLE: Record<Category, string> = {
-  Work: 'bg-sky-500/12 text-sky-700 dark:text-sky-300',
-  Build: 'bg-violet-500/12 text-violet-700 dark:text-violet-300',
-  Study: 'bg-amber-500/14 text-amber-800 dark:text-amber-300',
-  Errand: 'bg-orange-500/12 text-orange-700 dark:text-orange-300',
-  Health: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
-  Personal: 'bg-pink-500/12 text-pink-700 dark:text-pink-300',
-  Admin: 'bg-slate-500/12 text-slate-700 dark:text-slate-300',
-  Other: 'bg-surface-2 text-muted',
-};
-
-export const CATEGORY_BAR: Record<Category, string> = {
-  Work: 'bg-sky-500',
-  Build: 'bg-violet-500',
-  Study: 'bg-amber-500',
-  Errand: 'bg-orange-500',
-  Health: 'bg-emerald-500',
-  Personal: 'bg-pink-500',
-  Admin: 'bg-slate-500',
-  Other: 'bg-line-strong',
-};

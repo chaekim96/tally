@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, RefreshCw, Sparkles, Zap } from 'lucide-react';
-import type { Note, Settings } from '../../lib/types';
+import { ChevronLeft, LoaderCircle, RefreshCw, Sparkles, TriangleAlert } from 'lucide-react';
+import type { Item, Note, Settings } from '../../lib/types';
 import type { AiStatus } from '../lib/ai';
-import { CATEGORY_BAR, totals } from '../lib/notes';
+import { totals } from '../lib/notes';
 import { finishBy, fmtMinutes } from '../lib/time';
+import { ToolButton } from './ui/controls';
 
 interface Props {
   note: Note | null;
@@ -24,148 +25,154 @@ export default function Ledger({ note, settings, aiStatus, pendingCount, onEstim
   }, []);
 
   if (!note) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-sm text-muted px-6 text-center">Select a note to see its ledger.</div>
-    );
+    return <div className="flex-1 grid place-items-center text-[15px] text-muted px-6 text-center">Select a note to see its ledger.</div>;
   }
 
   const t = totals(note.items);
   const cap = settings.dailyCapacityMinutes;
   const pct = cap > 0 ? Math.min(1, t.remaining / cap) : 0;
   const over = t.remaining > cap;
-  const days = t.remaining / cap;
   const active = note.items.filter((i) => i.text.trim() && !i.done);
   const quickWins = active.filter((i) => i.minutes != null && i.minutes > 0 && i.minutes <= 15);
   const deep = active.filter((i) => (i.minutes ?? 0) >= 90);
   const lowConf = active.filter((i) => i.confidence === 'low' && (i.minutes ?? 0) > 0);
+  const meter = over ? 'bg-danger' : pct > 0.8 ? 'bg-warn' : 'bg-tint';
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-5 pt-5 pb-3 flex items-center gap-2 safe-pt">
-        <button onClick={onBack} className="md:hidden p-1.5 -ml-1 rounded-lg text-ink-2 hover:bg-surface-2"><ChevronLeft className="w-5 h-5" /></button>
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Ledger</h2>
-        {pendingCount > 0 && <Sparkles className="w-3.5 h-3.5 text-accent estimating ml-auto" />}
-      </div>
-
-      {/* Headline */}
-      <div className="px-5">
-        <div className="text-[11px] text-muted">Remaining</div>
-        <div className="font-mono tnum text-[40px] leading-none font-medium tracking-tight mt-1">{fmtMinutes(t.remaining)}</div>
-        <div className="mt-3 text-[12.5px]">
-          <Stat label="Total" value={fmtMinutes(t.total)} />
-          <Stat label="Done" value={fmtMinutes(t.done)} tone={t.done ? 'text-ok' : ''} />
-          <Stat label="Items" value={`${t.doneCount}/${t.count}`} />
-          <Stat label="Finish by" value={t.remaining > 0 ? finishBy(now, t.remaining) : '—'} />
+      <header className="safe-pt">
+        <div className="h-14 px-2.5 flex items-center gap-1">
+          <div className="md:hidden"><ToolButton label="Back to Note" onClick={onBack}><ChevronLeft className="w-5 h-5" /></ToolButton></div>
+          <h2 className="px-1.5 text-[17px] font-semibold">Ledger</h2>
+          {pendingCount > 0 && <LoaderCircle className="w-4 h-4 text-muted ml-auto mr-2 animate-spin motion-reduce:animate-none" aria-label="Estimating" />}
         </div>
-      </div>
+      </header>
 
-      {/* Capacity */}
-      <div className="px-5 mt-6">
-        <div className="flex items-baseline justify-between text-[11px] mb-2">
-          <span className="text-muted">Day capacity · {fmtMinutes(cap)}</span>
-          <span className={`font-mono tnum ${over ? 'text-danger' : 'text-ink-2'}`}>
-            {t.remaining === 0 ? 'clear' : over ? `${days.toFixed(1)} days` : `${Math.round(pct * 100)}%`}
-          </span>
-        </div>
-        <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-500 ${over ? 'bg-danger' : pct > 0.8 ? 'bg-warn' : 'bg-accent'}`} style={{ width: `${pct * 100}%` }} />
-        </div>
-        {over && (
-          <p className="text-[11.5px] text-danger mt-2">Over capacity by {fmtMinutes(t.remaining - cap)}. Split it across days or cut scope.</p>
-        )}
-        <button onClick={onOpenSettings} className="text-[11px] text-muted hover:text-ink mt-2 underline decoration-dotted underline-offset-2">Adjust capacity</button>
-      </div>
-
-      {/* Category mix */}
-      {t.byCategory.length > 0 && (
-        <div className="px-5 mt-6">
-          <div className="text-[11px] text-muted mb-2">Where the time goes</div>
-          <div className="flex h-2 rounded-full overflow-hidden gap-px">
-            {t.byCategory.map((c) => (
-              <div key={c.category} className={CATEGORY_BAR[c.category]} style={{ width: `${(c.minutes / t.remaining) * 100}%` }} title={`${c.category} ${fmtMinutes(c.minutes)}`} />
-            ))}
+      <div className="px-4 pb-6 space-y-6">
+        {/* Remaining + capacity: the one bold number on screen */}
+        <section className="card p-4" aria-label="Time remaining">
+          <div className="text-[13px] font-medium text-muted">Remaining</div>
+          <div className="font-rounded tabular text-[44px] leading-[1.05] font-semibold tracking-[-0.01em] mt-0.5">{fmtMinutes(t.remaining)}</div>
+          <div className="mt-4">
+            <div
+              role="meter"
+              aria-label="Share of today’s capacity"
+              aria-valuemin={0}
+              aria-valuemax={cap}
+              aria-valuenow={Math.min(t.remaining, cap)}
+              aria-valuetext={over ? `Over capacity by ${fmtMinutes(t.remaining - cap)}` : `${Math.round(pct * 100)} percent of ${fmtMinutes(cap)}`}
+              className="h-2 rounded-full bg-fill overflow-hidden"
+            >
+              <div className={`h-full rounded-full transition-[width] duration-500 ${meter}`} style={{ width: `${pct * 100}%` }} />
+            </div>
+            <div className="flex items-baseline justify-between mt-2 text-[13px]">
+              {over ? (
+                <span className="text-danger font-medium flex items-center gap-1">
+                  <TriangleAlert className="w-3.5 h-3.5" aria-hidden />Over by {fmtMinutes(t.remaining - cap)}
+                </span>
+              ) : (
+                <span className="text-muted tabular">{t.remaining === 0 ? 'Nothing left today' : `${Math.round(pct * 100)}% of ${fmtMinutes(cap)} today`}</span>
+              )}
+              <button onClick={onOpenSettings} className="text-tint hover:underline">Adjust</button>
+            </div>
+            {over && <p className="text-[13px] text-muted mt-1.5">That’s {(t.remaining / cap).toFixed(1)} days of focused work. Split it up or cut scope.</p>}
           </div>
-          <ul className="mt-2.5 space-y-1">
-            {t.byCategory.slice(0, 5).map((c) => (
-              <li key={c.category} className="flex items-center gap-2 text-[12px]">
-                <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_BAR[c.category]}`} />
-                <span className="text-ink-2">{c.category}</span>
-                <span className="ml-auto font-mono tnum text-ink-2">{fmtMinutes(c.minutes, { compact: true })}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        </section>
 
-      {/* Suggestions */}
-      {(quickWins.length > 0 || deep.length > 0) && (
-        <div className="px-5 mt-6 space-y-4">
-          {quickWins.length > 0 && (
-            <Group title="Quick wins" hint="≤15m — knock these out first">
-              {quickWins.slice(0, 4).map((i) => <Line key={i.id} text={i.text} mins={i.minutes!} />)}
-            </Group>
+        {/* Stats as a grouped list */}
+        <section className="card" aria-label="Summary">
+          <Row label="Total" value={fmtMinutes(t.total)} />
+          <Row label="Completed" value={fmtMinutes(t.done)} tone={t.done ? 'text-ok' : undefined} />
+          <Row label="Items" value={`${t.doneCount} of ${t.count}`} />
+          <Row label="Finish By" value={t.remaining > 0 ? finishBy(now, t.remaining) : '—'} />
+        </section>
+
+        {t.byCategory.length > 0 && (
+          <Group title="Where the Time Goes">
+            <div className="p-4">
+              <div className="flex h-2.5 rounded-full overflow-hidden gap-[2px]" aria-hidden>
+                {t.byCategory.map((c) => (
+                  <div key={c.category} className={`cat-${c.category} cat-fill`} style={{ width: `${(c.minutes / t.remaining) * 100}%` }} />
+                ))}
+              </div>
+              <ul className="mt-3 space-y-1.5">
+                {t.byCategory.map((c) => (
+                  <li key={c.category} className="flex items-center gap-2 text-[14px]">
+                    <span className={`cat-${c.category} cat-fill w-2.5 h-2.5 rounded-full`} aria-hidden />
+                    <span>{c.category}</span>
+                    <span className="ml-auto tabular text-muted">{fmtMinutes(c.minutes, { compact: true })}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Group>
+        )}
+
+        {quickWins.length > 0 && (
+          <Group title="Quick Wins" footer="15 minutes or less. Knock these out first.">
+            {quickWins.slice(0, 5).map((i) => <ItemLine key={i.id} item={i} />)}
+          </Group>
+        )}
+        {deep.length > 0 && (
+          <Group title="Deep Work" footer="90 minutes or more. Block real time for these.">
+            {deep.slice(0, 5).map((i) => <ItemLine key={i.id} item={i} />)}
+          </Group>
+        )}
+
+        <div className="space-y-2">
+          {t.unestimated > 0 && (
+            <button onClick={onEstimateAll} className="tap w-full h-11 rounded-[12px] bg-tint text-on-tint text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:brightness-95">
+              <Sparkles className="w-4 h-4" aria-hidden /> Estimate {t.unestimated} {t.unestimated === 1 ? 'Item' : 'Items'}
+            </button>
           )}
-          {deep.length > 0 && (
-            <Group title="Deep work" hint="≥90m — needs a real block">
-              {deep.slice(0, 4).map((i) => <Line key={i.id} text={i.text} mins={i.minutes!} />)}
-            </Group>
+          {t.count > 0 && (
+            <button onClick={onReestimateAll} className="tap w-full h-11 rounded-[12px] bg-fill text-tint text-[15px] font-medium flex items-center justify-center gap-2 hover:bg-fill-2">
+              <RefreshCw className="w-4 h-4" aria-hidden /> Re-estimate All
+            </button>
+          )}
+          {lowConf.length > 0 && aiStatus.mode !== 'offline' && (
+            <p className="text-[13px] text-muted px-1 pt-1">
+              {lowConf.length} low-confidence {lowConf.length === 1 ? 'estimate' : 'estimates'}. More detail in those lines gives a tighter number.
+            </p>
+          )}
+          {aiStatus.mode === 'offline' && (
+            <p className="text-[13px] text-muted px-1 pt-1">
+              <span className="text-warn font-medium">Offline.</span> Estimates marked “~” are keyword guesses.{' '}
+              <button onClick={onOpenSettings} className="text-tint hover:underline">Add your key or the access code</button> to use Claude.
+            </p>
           )}
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="px-5 mt-6 mb-6 space-y-2">
-        {t.unestimated > 0 && (
-          <button onClick={onEstimateAll} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-canvas text-[12.5px] font-medium hover:opacity-90 active:scale-[0.99] transition">
-            <Zap className="w-3.5 h-3.5" /> Estimate {t.unestimated} unestimated
-          </button>
-        )}
-        {t.count > 0 && (
-          <button onClick={onReestimateAll} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-surface-2 text-ink-2 text-[12.5px] font-medium hover:bg-line transition">
-            <RefreshCw className="w-3.5 h-3.5" /> Re-estimate everything
-          </button>
-        )}
-        {lowConf.length > 0 && aiStatus.mode !== 'offline' && (
-          <p className="text-[11px] text-muted pt-1">{lowConf.length} low-confidence {lowConf.length === 1 ? 'estimate' : 'estimates'} — add detail to those lines for a tighter number.</p>
-        )}
-        {aiStatus.mode === 'offline' && (
-          <p className="text-[11px] text-warn pt-1">Offline mode: estimates marked “~” are keyword guesses. <button onClick={onOpenSettings} className="underline">Add your key or the access code</button> for Claude estimates.</p>
-        )}
-      </div>
-
-      <div className="mt-auto px-5 py-3 border-t border-line text-[10.5px] text-muted safe-pb">
-        Estimates are for one focused person. Reality adds ~20%.
+        <p className="text-[12px] text-muted px-1 safe-pb">Estimates assume one focused person. Real days run about 20% longer.</p>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, tone = '' }: { label: string; value: string; tone?: string }) {
+function Row({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-line/70 py-1">
-      <span className="text-muted">{label}</span>
-      <span className={`font-mono tnum whitespace-nowrap ${tone}`}>{value}</span>
+    <div className="inset-row flex items-center justify-between h-11 px-4 text-[15px]">
+      <span>{label}</span>
+      <span className={`tabular ${tone ?? 'text-muted'}`}>{value}</span>
     </div>
   );
 }
 
-function Group({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+function Group({ title, footer, children }: { title: string; footer?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="flex items-baseline gap-2 mb-1.5">
-        <span className="text-[11px] font-semibold text-ink-2">{title}</span>
-        <span className="text-[10.5px] text-muted">{hint}</span>
-      </div>
-      <ul className="space-y-1">{children}</ul>
-    </div>
+    <section aria-label={title}>
+      <h3 className="px-4 pb-1.5 text-[13px] font-semibold text-muted">{title}</h3>
+      <div className="card">{children}</div>
+      {footer && <p className="px-4 pt-1.5 text-[12px] text-muted">{footer}</p>}
+    </section>
   );
 }
 
-function Line({ text, mins }: { text: string; mins: number }) {
+function ItemLine({ item }: { item: Item }) {
   return (
-    <li className="flex items-center gap-2 text-[12px]">
-      <span className="truncate text-ink-2">{text}</span>
-      <span className="ml-auto font-mono tnum text-muted shrink-0">{fmtMinutes(mins, { compact: true })}</span>
-    </li>
+    <div className="inset-row flex items-center gap-3 min-h-11 px-4 py-2 text-[15px]">
+      <span className="truncate">{item.text}</span>
+      <span className="ml-auto tabular text-muted shrink-0">{fmtMinutes(item.minutes, { compact: true })}</span>
+    </div>
   );
 }

@@ -8,7 +8,7 @@ import Toast, { type ToastMsg } from './components/Toast';
 import { AiRequestError, breakdownTask, checkHealth, estimateLines, type AiStatus, type Credentials } from './lib/ai';
 import { heuristicEstimate } from './lib/heuristic';
 import { newItem, newNote } from './lib/notes';
-import { applyTheme, loadNotes, loadSettings, saveNotes, saveSettings } from './lib/storage';
+import { loadNotes, loadSettings, saveNotes, saveSettings } from './lib/storage';
 import { extractInlineDuration } from './lib/time';
 
 export type SortMode = 'original' | 'longest' | 'shortest';
@@ -41,15 +41,9 @@ export default function App() {
   const aiRef = useRef(aiStatus);
   aiRef.current = aiStatus;
 
-  // ---- persistence & theme ----
+  // ---- persistence (appearance follows the system; see index.css) ----
   useEffect(() => { saveNotes(notes); }, [notes]);
-  useEffect(() => { saveSettings(settings); applyTheme(settings.theme); }, [settings]);
-  useEffect(() => {
-    const mq = matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => applyTheme(settingsRef.current.theme);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  useEffect(() => { saveSettings(settings); }, [settings]);
   useEffect(() => {
     let cancelled = false;
     setAiStatus({ mode: 'checking' });
@@ -235,10 +229,12 @@ export default function App() {
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
 
+  const showToast = useCallback((text: string) => setToast({ kind: 'info', text }), []);
+
   return (
-    <div className="h-full w-full flex bg-canvas text-ink overflow-hidden">
-      {/* Notes list */}
-      <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-[272px] shrink-0 flex-col border-r border-line bg-canvas`}>
+    <div className="h-full w-full flex bg-grouped text-ink overflow-hidden">
+      {/* Sidebar */}
+      <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-[280px] shrink-0 flex-col bg-grouped md:border-r-[0.5px] border-separator`}>
         <Sidebar
           notes={notes}
           selectedId={selectedId}
@@ -270,14 +266,15 @@ export default function App() {
             onBack={() => setMobileView('list')}
             ledgerOpen={ledgerOpen}
             onToggleLedger={() => (window.innerWidth < 768 ? setMobileView('ledger') : setLedgerOpen((o) => !o))}
+            onToast={showToast}
           />
         ) : (
           <EmptyState onCreate={createNote} />
         )}
       </main>
 
-      {/* Ledger */}
-      <aside className={`${mobileView === 'ledger' ? 'flex' : 'hidden'} ${ledgerOpen ? 'md:flex' : 'md:hidden'} w-full md:w-[300px] shrink-0 flex-col border-l border-line bg-canvas`}>
+      {/* Ledger (inspector) */}
+      <aside className={`${mobileView === 'ledger' ? 'flex' : 'hidden'} ${ledgerOpen ? 'md:flex' : 'md:hidden'} w-full md:w-[320px] shrink-0 flex-col bg-grouped md:border-l-[0.5px] border-separator`}>
         <Ledger
           note={selected}
           settings={settings}
@@ -298,6 +295,7 @@ export default function App() {
           onChange={setSettings}
           onImport={(imported) => { setNotes(imported); setSelectedId(imported[0]?.id ?? null); }}
           onClose={() => setShowSettings(false)}
+          onToast={showToast}
         />
       )}
       <Toast msg={toast} onDone={() => setToast(null)} />
@@ -309,22 +307,21 @@ function creds(s: Settings): Credentials {
   return { apiKey: s.apiKey || undefined, accessCode: s.accessCode || undefined };
 }
 
+/** Empty screens invite the next action (writing.md). The brand mark lives only here. */
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-      <div className="w-12 h-12 rounded-2xl bg-surface-2 flex items-center justify-center mb-4">
-        <span className="font-mono text-accent font-semibold">Σ</span>
+      <div className="w-14 h-14 rounded-[16px] bg-tint-soft grid place-items-center mb-5" aria-hidden>
+        <span className="font-rounded text-[28px] font-semibold text-tint leading-none">Σ</span>
       </div>
-      <h2 className="font-semibold text-lg">Notes that add up</h2>
-      <p className="text-sm text-muted mt-1 max-w-xs">
-        Write a list. Every line gets a time estimate in the ledger on the right.
+      <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notes That Add Up</h2>
+      <p className="text-[15px] text-muted mt-1.5 max-w-[300px] leading-snug">
+        Write a list. Every line gets a time estimate, and the ledger adds them up.
       </p>
-      <button
-        onClick={onCreate}
-        className="mt-5 px-4 py-2 rounded-xl bg-ink text-canvas text-sm font-medium hover:opacity-90 active:scale-[0.98] transition"
-      >
-        New note <span className="ml-2 font-mono text-xs opacity-60">⌘N</span>
+      <button onClick={onCreate} className="tap mt-6 h-11 px-5 rounded-full bg-tint text-on-tint text-[15px] font-semibold hover:brightness-110 active:brightness-95">
+        New Note
       </button>
+      <p className="text-[12px] text-muted mt-3">or press <kbd>⌘N</kbd></p>
     </div>
   );
 }
