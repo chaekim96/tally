@@ -421,9 +421,7 @@ function creds(s: Settings): Credentials {
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-      <div className="w-14 h-14 rounded-[16px] bg-tint-soft grid place-items-center mb-5" aria-hidden>
-        <span className="font-rounded text-[28px] font-semibold text-tint leading-none">Σ</span>
-      </div>
+      <img src="/favicon.svg" alt="" width={64} height={64} className="mb-5 drop-shadow-[0_8px_18px_rgb(240_106_10/0.25)]" />
       <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notes That Add Up</h2>
       <p className="text-[15px] text-muted mt-1.5 max-w-[300px] leading-snug">
         Write a list. Every line gets a time estimate, and the ledger adds them up.

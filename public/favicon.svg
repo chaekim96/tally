@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#111318"/>
-  <path d="M8 9h16M8 15h10M8 21h13" stroke="#F6F7F9" stroke-width="2.6" stroke-linecap="round"/>
-  <circle cx="24" cy="21" r="3" fill="#E8590C"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB340"/><stop offset="1" stop-color="#F06A0A"/></linearGradient>
+    <linearGradient id="bgD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A3A3C"/><stop offset="1" stop-color="#1C1C1E"/></linearGradient>
+    <linearGradient id="markD" gradientUnits="userSpaceOnUse" x1="0" y1="128" x2="0" y2="384"><stop offset="0" stop-color="#FFC46B"/><stop offset="1" stop-color="#FF9F0A"/></linearGradient>
+    <filter id="lift" x="-20%" y="-40%" width="140%" height="180%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#7A2E00" flood-opacity=".35"/></filter>
+  </defs>
+  <style>
+    .bg{fill:url(#bgL)} .bar{stroke:#fff;stroke-width:54;stroke-linecap:round;opacity:.82}
+    .slash{stroke:#fff;stroke-width:54;stroke-linecap:round}
+    @media (prefers-color-scheme: dark){.bg{fill:url(#bgD)} .bar{stroke:url(#markD);opacity:.9} .slash{stroke:url(#markD)}}
+  </style>
+  <rect class="bg" width="512" height="512" rx="114"/>
+  <g><line class="bar" x1="136" y1="155" x2="136" y2="357"/><line class="bar" x1="216" y1="155" x2="216" y2="357"/><line class="bar" x1="296" y1="155" x2="296" y2="357"/><line class="bar" x1="376" y1="155" x2="376" y2="357"/></g>
+  <line class="slash" x1="92" y1="344" x2="420" y2="168" filter="url(#lift)"/>
 </svg>
