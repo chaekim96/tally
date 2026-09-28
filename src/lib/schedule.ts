@@ -1,39 +1,13 @@
-import type { Item, Note, Schedule } from '../../lib/types';
+import type { Item, Note, Schedule, Settings } from '../../lib/types';
 import { noteTitle } from './notes';
+import { dateKey, dayLabel, minutesNow } from './dates';
+
+export { addDays, dateKey, dayLabel, minutesNow, parseKey } from './dates';
 
 export const DAY_MIN = 24 * 60;
 export const SNAP = 15;
 /** Duration used for an item that hasn't been estimated (or isn't a task). */
 export const FALLBACK_MIN = 30;
-
-/** Local YYYY-MM-DD for a timestamp. */
-export function dateKey(ts: number | Date = Date.now()): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export function parseKey(key: string): Date {
-  const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-export function addDays(key: string, n: number): string {
-  const d = parseKey(key);
-  d.setDate(d.getDate() + n);
-  return dateKey(d);
-}
-
-export function dayLabel(key: string, today = dateKey()): string {
-  if (key === today) return 'Today';
-  if (key === addDays(today, 1)) return 'Tomorrow';
-  if (key === addDays(today, -1)) return 'Yesterday';
-  return parseKey(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-export function minutesNow(ts = Date.now()): number {
-  const d = new Date(ts);
-  return d.getHours() * 60 + d.getMinutes();
-}
 
 /** "2:00 PM" */
 export function clock(min: number): string {
@@ -119,4 +93,9 @@ export function nextFreeStart(blocks: { start: number; end: number }[], dur: num
 export function scheduleLabel(s: Schedule, dur: number, today = dateKey()): string {
   const day = dayLabel(s.date, today);
   return `${day === 'Today' ? '' : `${day}, `}${clockRange(s.start, Math.min(DAY_MIN, s.start + dur))}`;
+}
+
+/** Capacity for a day: its own override, or the default from Settings. */
+export function capacityFor(settings: Pick<Settings, 'dailyCapacityMinutes' | 'capacityByDate'>, date: string): number {
+  return settings.capacityByDate?.[date] ?? settings.dailyCapacityMinutes;
 }

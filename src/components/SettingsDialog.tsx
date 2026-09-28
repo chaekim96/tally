@@ -74,8 +74,8 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
         </header>
 
         <div className="overflow-y-auto px-4 pt-5 pb-8 space-y-7 safe-pb">
-          <Group title="Planning" footer="The focused hours you realistically have in a day. The ledger compares what’s left against this.">
-            <Row label="Daily Capacity">
+          <Group title="Planning" footer="The focused hours you realistically have in a day. Change a single day’s capacity in the Day view.">
+            <Row label="Default Capacity">
               <Stepper
                 label="Daily capacity"
                 value={settings.dailyCapacityMinutes}
@@ -108,8 +108,9 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
 
           <Group title="Keyboard Shortcuts">
             {[
-              ['New Note', '⌘N'], ['Settings', '⌘,'], ['New Line', '↩'], ['Indent · Outdent', '⇥ · ⇧⇥'],
-              ['Complete Item', '⌘↩'], ['Move Line', '⌥↑ · ⌥↓'], ['Estimate Again', '⌘E'], ['Break Down', '⌘B'],
+              ['New Note', '⌘N'], ['Settings', '⌘,'], ['Show/Hide Sidebar', '⌃⌘S'], ['New Line', '↩'], ['Indent · Outdent', '⇥ · ⇧⇥'],
+              ['Complete Item', '⌘↩'], ['Move Line', '⌥↑ · ⌥↓'], ['Estimate Again', '⌘E'], ['Break Down', '⌘B'], ['Add Note to Item', '⇧↩'],
+              ['Move Block (Day View)', '↑ · ↓'], ['Resize Block', '⌥↑ · ⌥↓'],
             ].map(([label, keys]) => (
               <Row key={label} label={label}><kbd className="tabular text-[15px] text-muted">{keys}</kbd></Row>
             ))}

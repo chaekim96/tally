@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CalendarClock, CalendarPlus, Check, ListTree, LoaderCircle, RefreshCw, X } from 'lucide-react';
-import type { Category, Item } from '../../lib/types';
+import type { Category, Item, Priority } from '../../lib/types';
 import { CATEGORIES } from '../../lib/types';
 import { beginDrag, endDrag } from '../lib/drag';
+import { PRIORITY_MARKS, PRIORITY_NAMES } from '../lib/notes';
 import { durationOf, scheduleLabel } from '../lib/schedule';
 import { fmtMinutes, parseDuration } from '../lib/time';
 
@@ -15,6 +16,7 @@ interface Props {
   register: (id: string, el: HTMLInputElement | null) => void;
   onChange: (text: string) => void;
   onNotes: (notes: string) => void;
+  onPriority: (p: Priority) => void;
   onToggle: () => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onCategory: (c: Category) => void;
@@ -55,6 +57,8 @@ export default function ItemRow(p: Props) {
     if (m != null) p.onManualMinutes(m);
     setEditing(false);
   };
+  const priority = item.priority ?? 0;
+  const cyclePriority = () => p.onPriority(((priority + 1) % 4) as Priority);
   const cycleCategory = () => p.onCategory(CATEGORIES[(CATEGORIES.indexOf(item.category) + 1) % CATEGORIES.length]);
 
   const hasText = item.text.trim().length > 0;
@@ -91,6 +95,18 @@ export default function ItemRow(p: Props) {
       </div>
 
       <div className="flex-1 min-w-0 ml-1.5">
+        <div className="flex items-center">
+        {/* Reminders-style priority marks: shape, not just color, carries the level (color.md) */}
+        {priority > 0 && (
+          <button
+            onClick={cyclePriority}
+            aria-label={`Priority: ${PRIORITY_NAMES[priority]}. Change priority`}
+            title={`${PRIORITY_NAMES[priority]} priority`}
+            className={`row-text shrink-0 h-[var(--line-h)] pr-1.5 font-bold tracking-[-0.04em] ${item.done ? 'text-muted' : 'text-tint'}`}
+          >
+            {PRIORITY_MARKS[priority]}
+          </button>
+        )}
         <input
           ref={(el) => { titleRef.current = el; p.register(item.id, el); }}
           value={item.text}
@@ -106,8 +122,9 @@ export default function ItemRow(p: Props) {
           placeholder={item.indent ? 'Subtask' : 'New item'}
           aria-label={item.indent ? 'Subtask' : 'Item'}
           spellCheck={false}
-          className={`bare row-text block w-full h-[var(--line-h)] text-ellipsis bg-transparent outline-none ${item.done ? 'text-muted' : item.indent ? 'text-ink-2' : 'text-ink'}`}
+          className={`bare row-text block w-full min-w-0 h-[var(--line-h)] text-ellipsis bg-transparent outline-none ${priority === 3 && !item.done ? 'font-semibold' : ''} ${item.done ? 'text-muted' : item.indent ? 'text-ink-2' : 'text-ink'}`}
         />
+        </div>
         {showNotes && (
           <textarea
             ref={notesRef}
@@ -145,6 +162,9 @@ export default function ItemRow(p: Props) {
               <CalendarPlus className="w-4 h-4" />
             </RowAction>
           )}
+          <RowAction label={`Priority: ${PRIORITY_NAMES[priority]} (click to change)`} onClick={cyclePriority}>
+            <span className="text-[15px] font-bold leading-none">!</span>
+          </RowAction>
           {p.aiAvailable && item.indent === 0 && (
             <RowAction label="Break Down into Subtasks (⌘B)" onClick={p.onBreakdown}><ListTree className="w-4 h-4" /></RowAction>
           )}

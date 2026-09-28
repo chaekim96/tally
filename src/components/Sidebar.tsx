@@ -1,38 +1,63 @@
-import { useMemo, useState } from 'react';
-import { Search, Settings, SquarePen, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PanelLeft, Search, Settings, SquarePen, X } from 'lucide-react';
 import type { Note } from '../../lib/types';
 import type { AiStatus } from '../lib/ai';
+import { dateKey, daysBetween, parseKey } from '../lib/dates';
 import { noteTitle, totals } from '../lib/notes';
-import { fmtMinutes, relativeDay } from '../lib/time';
+import { fmtMinutes } from '../lib/time';
 import { ToolButton } from './ui/controls';
 
 interface Props {
   notes: Note[];
   selectedId: string | null;
   aiStatus: AiStatus;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
   onCreate: () => void;
   onOpenSettings: () => void;
 }
 
-const ORDER = ['Today', 'Yesterday', 'This week', 'Earlier'] as const;
-const HEADING: Record<(typeof ORDER)[number], string> = { Today: 'Today', Yesterday: 'Yesterday', 'This week': 'Previous 7 Days', Earlier: 'Earlier' };
+const BUCKETS = ['Upcoming', 'Today', 'Yesterday', 'Previous 7 Days', 'Earlier'] as const;
+type Bucket = (typeof BUCKETS)[number];
 
-export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreate, onOpenSettings }: Props) {
+function bucketOf(date: string, today: string): Bucket {
+  const d = daysBetween(today, date);
+  if (d > 0) return 'Upcoming';
+  if (d === 0) return 'Today';
+  if (d === -1) return 'Yesterday';
+  return d >= -7 ? 'Previous 7 Days' : 'Earlier';
+}
+
+/** Notes grouped by the day they're for; the next day up comes first under Upcoming. */
+function groupNotes(notes: Note[], today: string) {
+  const sorted = [...notes].sort((a, b) => {
+    const fa = a.date > today, fb = b.date > today;
+    if (fa !== fb) return fa ? -1 : 1;
+    if (a.date !== b.date) return fa ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+    return a.createdAt - b.createdAt;
+  });
+  const map = new Map<Bucket, Note[]>();
+  for (const n of sorted) map.set(bucketOf(n.date, today), [...(map.get(bucketOf(n.date, today)) ?? []), n]);
+  return BUCKETS.filter((b) => map.has(b)).map((b) => ({ label: b, notes: map.get(b)! }));
+}
+
+export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onToggleCollapsed, onSelect, onCreate, onOpenSettings }: Props) {
   const [q, setQ] = useState('');
+  const [focusSearch, setFocusSearch] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const today = dateKey();
+
+  useEffect(() => {
+    if (!collapsed && focusSearch) { searchRef.current?.focus(); setFocusSearch(false); }
+  }, [collapsed, focusSearch]);
 
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const filtered = notes
-      .filter((n) => !needle || noteTitle(n).toLowerCase().includes(needle) || n.items.some((i) => i.text.toLowerCase().includes(needle) || !!i.notes?.toLowerCase().includes(needle)))
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-    const map = new Map<string, Note[]>();
-    for (const n of filtered) {
-      const k = relativeDay(n.updatedAt);
-      map.set(k, [...(map.get(k) ?? []), n]);
-    }
-    return ORDER.filter((k) => map.has(k)).map((k) => ({ label: HEADING[k], notes: map.get(k)! }));
-  }, [notes, q]);
+    const filtered = notes.filter((n) => !needle || noteTitle(n).toLowerCase().includes(needle)
+      || n.items.some((i) => i.text.toLowerCase().includes(needle) || !!i.notes?.toLowerCase().includes(needle)));
+    return groupNotes(filtered, today);
+  }, [notes, q, today]);
 
   const status =
     aiStatus.mode === 'checking' ? { dot: 'bg-control', label: 'Checking Claude…' }
@@ -40,14 +65,70 @@ export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreat
     : aiStatus.mode === 'browser' ? { dot: 'bg-ok', label: 'Claude · your key' }
     : { dot: 'bg-ok', label: 'Claude · server key' };
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="safe-pt">
-        <div className="h-14 px-2.5 flex items-center justify-end gap-0.5">
+  const newNoteButton = (
+    <button onClick={onCreate} aria-label="New Note" title="New Note (⌘N)" className="tap w-9 h-9 grid place-items-center rounded-full text-tint hover:bg-tint-soft">
+      <SquarePen className="w-5 h-5" />
+    </button>
+  );
+
+  // Minimized: a rail of date tiles, like the Calendar app icon (desktop only; phones keep the full list).
+  let rail: React.ReactNode = null;
+  if (collapsed) {
+    const all = groups.flatMap((g) => g.notes);
+    rail = (
+      <div className="hidden md:flex flex-col items-center h-full">
+        <div className="safe-pt flex flex-col items-center gap-0.5 pt-2.5">
+          <ToolButton label="Show Sidebar (⌃⌘S)" onClick={onToggleCollapsed}><PanelLeft className="w-[19px] h-[19px] text-muted" /></ToolButton>
+          {newNoteButton}
+          <ToolButton label="Search Notes" onClick={() => { setFocusSearch(true); onToggleCollapsed(); }}><Search className="w-[18px] h-[18px] text-muted" /></ToolButton>
+        </div>
+        <span aria-hidden className="w-8 my-2 border-t-[0.5px] border-separator" />
+        <nav aria-label="Notes" className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-1 pb-2">
+          {all.map((n) => {
+            const d = parseKey(n.date);
+            const sameDay = all.filter((x) => x.date === n.date);
+            const nth = sameDay.indexOf(n) + 1;
+            const t = totals(n.items);
+            const active = n.id === selectedId;
+            return (
+              <button
+                key={n.id}
+                onClick={() => onSelect(n.id)}
+                aria-current={active ? 'page' : undefined}
+                aria-label={`${noteTitle(n)}${t.remaining ? `, ${fmtMinutes(t.remaining)} remaining` : ''}`}
+                title={noteTitle(n)}
+                className={`relative w-[52px] py-1.5 rounded-[12px] flex flex-col items-center leading-none ${active ? 'bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'hover:bg-fill'}`}
+              >
+                <span className="text-[11px] font-semibold text-tint uppercase tracking-wide">{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                <span className="text-[21px] font-medium tabular mt-0.5">{d.getDate()}</span>
+                {sameDay.length > 1 && (
+                  <span aria-hidden className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-surface shadow-[0_0_0_0.5px_var(--separator)] text-[11px] leading-4 tabular text-ink-2">{nth}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="py-2 flex flex-col items-center gap-1 border-t-[0.5px] border-separator w-full safe-pb">
           <ToolButton label="Settings (⌘,)" onClick={onOpenSettings}><Settings className="w-[19px] h-[19px] text-muted" /></ToolButton>
-          <button onClick={onCreate} aria-label="New Note" title="New Note (⌘N)" className="tap w-9 h-9 grid place-items-center rounded-full text-tint hover:bg-tint-soft">
-            <SquarePen className="w-5 h-5" />
-          </button>
+          <span role="status" aria-label={status.label} title={status.label} className={`w-2 h-2 rounded-full ${status.dot}`} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+    {rail}
+    <div className={`${collapsed ? 'flex md:hidden' : 'flex'} flex-col h-full`}>
+      <div className="safe-pt">
+        <div className="h-14 px-2.5 flex items-center gap-0.5">
+          <div className="hidden md:block">
+            <ToolButton label="Hide Sidebar (⌃⌘S)" onClick={onToggleCollapsed}><PanelLeft className="w-[19px] h-[19px] text-muted" /></ToolButton>
+          </div>
+          <div className="ml-auto flex items-center gap-0.5">
+            <ToolButton label="Settings (⌘,)" onClick={onOpenSettings}><Settings className="w-[19px] h-[19px] text-muted" /></ToolButton>
+            {newNoteButton}
+          </div>
         </div>
         <h1 className="px-4 text-[28px] font-bold tracking-[-0.01em] leading-tight">Notes</h1>
         <div className="px-3 pt-2.5 pb-2">
@@ -55,6 +136,7 @@ export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreat
             <span className="sr-only">Search notes</span>
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden />
             <input
+              ref={searchRef}
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -117,5 +199,6 @@ export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreat
         <span className="ml-auto tabular" aria-label={`${notes.length} notes`}>{notes.length}</span>
       </div>
     </div>
+    </>
   );
 }

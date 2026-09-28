@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, Ellipsis, PanelRight, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Copy, Ellipsis, PanelRight, Plus, Trash2 } from 'lucide-react';
 import type { Item, Note } from '../../lib/types';
 import type { SortMode } from '../App';
 import type { AiStatus } from '../lib/ai';
+import { longDate } from '../lib/dates';
 import { newItem, noteTitle, toMarkdown, totals } from '../lib/notes';
 import ItemRow from './ItemRow';
 import Alert from './ui/Alert';
@@ -30,10 +31,16 @@ interface Props {
   flash: Set<string>;
   onScheduleNext: (itemId: string) => void;
   onOpenDay: (date: string) => void;
+  /** Every note for this note's date, oldest first (the day pager). */
+  dayNotes: Note[];
+  onSelectNote: (id: string) => void;
+  onNewNoteForDay: () => void;
+  onChangeDate: (date: string) => void;
 }
 
-const NEXT_SORT: Record<SortMode, SortMode> = { original: 'longest', longest: 'shortest', shortest: 'original' };
-const SORT_LABEL: Record<SortMode, string> = { original: 'Original Order', longest: 'Longest First', shortest: 'Shortest First' };
+// The Estimate heading cycles the time sorts; Priority First lives in the More menu.
+const NEXT_SORT: Record<SortMode, SortMode> = { original: 'longest', longest: 'shortest', shortest: 'original', priority: 'longest' };
+const SORT_LABEL: Record<SortMode, string> = { original: 'Original Order', priority: 'Priority First', longest: 'Longest First', shortest: 'Shortest First' };
 
 export default function Editor(p: Props) {
   const { note, sortMode, hideDone } = p;
@@ -81,6 +88,7 @@ export default function Editor(p: Props) {
     let list = note.items;
     if (hideDone) list = list.filter((i) => !i.done);
     if (sortMode === 'original') return list;
+    if (sortMode === 'priority') return [...list].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     const sorted = [...list].sort((a, b) => (b.minutes ?? -1) - (a.minutes ?? -1));
     return sortMode === 'longest' ? sorted : sorted.reverse();
   }, [note.items, sortMode, hideDone]);
@@ -171,7 +179,6 @@ export default function Editor(p: Props) {
   };
 
   const t = totals(note.items);
-  const date = new Date(note.updatedAt).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   const title = noteTitle(note);
 
   return (
@@ -184,13 +191,28 @@ export default function Editor(p: Props) {
             value={note.title}
             onChange={(e) => p.onUpdate((n) => ({ ...n, title: e.target.value }))}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); focus(note.items[0]?.id); } }}
-            placeholder="Untitled"
+            placeholder={longDate(note.date)}
             aria-label="Note title"
             className="bare w-full bg-transparent outline-none text-[28px] md:text-[30px] leading-tight font-bold tracking-[-0.01em] pt-1"
           />
-          <p className="text-[13px] text-muted mt-1 tabular">
-            {date}{t.count > 0 && ` · ${t.count} ${t.count === 1 ? 'item' : 'items'}`}{t.doneCount > 0 && `, ${t.doneCount} completed`}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] text-muted tabular">
+            {/* The note's day: a native date picker (pickers.md: prefer system pickers) */}
+            <label className="relative inline-flex items-center gap-1 rounded-[6px] hover:text-tint focus-within:text-tint cursor-pointer">
+              <CalendarDays className="w-3.5 h-3.5" aria-hidden />
+              <span>{longDate(note.date)}</span>
+              <input
+                type="date"
+                value={note.date}
+                required
+                aria-label="Note date"
+                onChange={(e) => e.target.value && p.onChangeDate(e.target.value)}
+                onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* not supported: typing still works */ } }}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+              />
+            </label>
+            {t.count > 0 && <span>· {t.count} {t.count === 1 ? 'item' : 'items'}{t.doneCount > 0 && `, ${t.doneCount} completed`}</span>}
+            <DayPager notes={p.dayNotes} currentId={note.id} onSelect={p.onSelectNote} onNew={p.onNewNoteForDay} />
+          </div>
 
           {/* Column headings; the estimate heading sorts, like a Mac table (lists-and-tables.md › Desktop) */}
           <div className="mt-5 flex items-center h-7 text-[12px] font-medium text-muted border-b-[0.5px] border-separator">
@@ -199,7 +221,7 @@ export default function Editor(p: Props) {
             <button
               onClick={() => p.onSort(NEXT_SORT[sortMode])}
               aria-label={`Sort by estimate. Currently ${SORT_LABEL[sortMode]}`}
-              className={`w-[64px] md:w-[84px] h-7 flex items-center justify-end gap-0.5 rounded-[6px] hover:text-ink ${sortMode !== 'original' ? 'text-tint' : ''}`}
+              className={`w-[64px] md:w-[84px] h-7 flex items-center justify-end gap-0.5 rounded-[6px] hover:text-ink ${sortMode === 'longest' || sortMode === 'shortest' ? 'text-tint' : ''}`}
             >
               Estimate
               {sortMode === 'longest' && <ArrowDown className="w-3 h-3" strokeWidth={2.25} aria-hidden />}
@@ -218,6 +240,7 @@ export default function Editor(p: Props) {
               register={register}
               onChange={(text) => { p.onUpdateItem(item.id, (i) => ({ ...i, text })); p.onTyped(item.id); }}
               onNotes={(notes) => { p.onUpdateItem(item.id, (i) => ({ ...i, notes })); p.onTyped(item.id); }}
+              onPriority={(priority) => p.onUpdateItem(item.id, (i) => ({ ...i, priority }))}
               onToggle={() => p.onUpdateItem(item.id, (i) => ({ ...i, done: !i.done }))}
               onKeyDown={(e) => onKey(e, item)}
               onCategory={(c) => p.onUpdateItem(item.id, (i) => ({ ...i, category: c }))}
@@ -259,7 +282,7 @@ export default function Editor(p: Props) {
             triggerClassName="tap w-9 h-9 grid place-items-center rounded-full text-ink hover:bg-fill"
             entries={[
               { kind: 'section', label: 'Sort By' },
-              ...(['original', 'longest', 'shortest'] as SortMode[]).map((m) => ({
+              ...(['original', 'priority', 'longest', 'shortest'] as SortMode[]).map((m) => ({
                 kind: 'radio' as const, label: SORT_LABEL[m], checked: sortMode === m, onSelect: () => p.onSort(m),
               })),
               { kind: 'divider' },
@@ -282,6 +305,30 @@ export default function Editor(p: Props) {
           onCancel={() => setConfirmDelete(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** Step through the notes for one day ("2 of 3"), or add another for that day. */
+function DayPager({ notes, currentId, onSelect, onNew }: { notes: Note[]; currentId: string; onSelect: (id: string) => void; onNew: () => void }) {
+  const i = notes.findIndex((n) => n.id === currentId);
+  const btn = 'tap w-7 h-7 grid place-items-center rounded-full text-tint hover:bg-tint-soft disabled:text-muted disabled:opacity-40 disabled:hover:bg-transparent';
+  return (
+    <div role="group" aria-label="Notes for this day" className="ml-auto flex items-center gap-0.5">
+      {notes.length > 1 && (
+        <>
+          <button className={btn} disabled={i <= 0} onClick={() => onSelect(notes[i - 1].id)} aria-label="Previous Note for This Day">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-[13px] text-muted tabular px-0.5" aria-live="polite">{i + 1} of {notes.length}</span>
+          <button className={btn} disabled={i >= notes.length - 1} onClick={() => onSelect(notes[i + 1].id)} aria-label="Next Note for This Day">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      <button onClick={onNew} title="New Note for This Day" aria-label="New Note for This Day" className="tap h-7 pl-1.5 pr-2 rounded-full flex items-center gap-1 text-[13px] text-tint hover:bg-tint-soft">
+        <Plus className="w-3.5 h-3.5" strokeWidth={2.25} />{notes.length > 1 ? '' : 'Note'}
+      </button>
     </div>
   );
 }

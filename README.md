@@ -12,6 +12,15 @@ estimator.
 
 - **Write like a list.** Title + lines. `Enter` for a new line, `Tab` to make a
   sub-task, `⌘Enter` to check something off.
+- **Notes belong to a day.** A new note is titled with its date ("Monday,
+  September 28"); a second note that day becomes "(2)". Step through a day's
+  notes with ‹ 2 of 3 ›, add another with +, and move a note to another day with
+  the date under its title (an automatic title follows the date; a custom one
+  stays). The sidebar groups notes by day and minimizes to a rail of date tiles
+  (`⌃⌘S`).
+- **Priority.** Reminders-style `!` / `!!` / `!!!` from a row's `!` button.
+  High-priority titles are bold, Priority First sorts them up, the Summary lists
+  them, and the Day view's tray offers them first.
 - **Every line gets an estimate.** Claude reads the whole note for context and
   returns the most-likely minutes, an 80% range, a confidence level, and a
   category (Work · Build · Study · Errand · Health · Personal · Admin).
@@ -30,7 +39,10 @@ estimator.
   the Unscheduled tray (or a row’s calendar handle) onto a time, drag blocks to
   move them, drop them back on the tray to unschedule. Without dragging: select
   an item, then tap a time, or use Next Free Time; focused blocks move with
-  `↑`/`↓` (15 min, `⇧` for an hour) and `Delete` removes them.
+  `↑`/`↓` (15 min, `⇧` for an hour) and `Delete` removes them. Drag a block's
+  bottom edge (or `⌥↑`/`⌥↓`, or Shorter/Longer) to change how long it takes.
+  Each day has its own capacity: step through days and adjust it with the
+  stepper, or go back to the default from Settings.
 - **Works offline.** No key? Estimates fall back to a keyword heuristic and are
   marked with `~`.
 - Sort by longest/shortest, hide done, search, dark mode, copy as Markdown,

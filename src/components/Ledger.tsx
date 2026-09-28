@@ -6,6 +6,8 @@ import DayView from './DayView';
 import type { AiStatus } from '../lib/ai';
 import { totals } from '../lib/notes';
 import { finishBy, fmtMinutes } from '../lib/time';
+import { capacityFor, dateKey, dayLabel } from '../lib/schedule';
+import { PRIORITY_MARKS } from '../lib/notes';
 import { ToolButton } from './ui/controls';
 
 interface Props {
@@ -16,6 +18,8 @@ interface Props {
   dayDate: string;
   onDayDate: (d: string) => void;
   onSchedule: (noteId: string, itemId: string, s: Schedule | null) => void;
+  onResize: (noteId: string, itemId: string, minutes: number) => void;
+  onCapacity: (date: string, minutes: number | null) => void;
   settings: Settings;
   aiStatus: AiStatus;
   pendingCount: number;
@@ -26,7 +30,7 @@ interface Props {
 }
 
 export default function Ledger(props: Props) {
-  const { note, notes, tab, onTab, dayDate, onDayDate, onSchedule, settings, pendingCount, onBack } = props;
+  const { note, notes, tab, onTab, dayDate, onDayDate, onSchedule, onResize, onCapacity, settings, pendingCount, onBack } = props;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
@@ -49,7 +53,14 @@ export default function Ledger(props: Props) {
       </header>
       <div role="tabpanel" id={`ledger-${tab}`} aria-labelledby={`ledger-tab-${tab}`} className="flex flex-col flex-1 min-h-0 pt-3">
         {tab === 'day' ? (
-          <DayView note={note} notes={notes} date={dayDate} onDate={onDayDate} capacity={settings.dailyCapacityMinutes} now={now} onSchedule={onSchedule} />
+          <DayView
+            note={note} notes={notes} date={dayDate} onDate={onDayDate} now={now}
+            capacity={capacityFor(settings, dayDate)}
+            capacityIsDefault={settings.capacityByDate?.[dayDate] == null}
+            onCapacity={onCapacity}
+            onSchedule={onSchedule}
+            onResize={onResize}
+          />
         ) : (
           <Summary {...props} note={note} now={now} />
         )}
@@ -95,9 +106,13 @@ function Segmented({ value, onChange }: { value: LedgerTab; onChange: (t: Ledger
   );
 }
 
-function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onOpenSettings, now }: Props & { note: Note; now: number }) {
+function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onOpenSettings, onTab, onDayDate, now }: Props & { note: Note; now: number }) {
   const t = totals(note.items);
-  const cap = settings.dailyCapacityMinutes;
+  // The note's own day decides the capacity it's measured against.
+  const cap = capacityFor(settings, note.date);
+  const day = note.date === dateKey(now) ? 'today' : `on ${dayLabel(note.date, dateKey(now))}`;
+  const adjust = () => { onDayDate(note.date); onTab('day'); };
+  const priorities = note.items.filter((i) => i.text.trim() && !i.done && (i.priority ?? 0) > 0).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   const pct = cap > 0 ? Math.min(1, t.remaining / cap) : 0;
   const over = t.remaining > cap;
   const active = note.items.filter((i) => i.text.trim() && !i.done);
@@ -131,13 +146,25 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
                   <TriangleAlert className="w-3.5 h-3.5" aria-hidden />Over by {fmtMinutes(t.remaining - cap)}
                 </span>
               ) : (
-                <span className="text-muted tabular">{t.remaining === 0 ? 'Nothing left today' : `${Math.round(pct * 100)}% of ${fmtMinutes(cap)} today`}</span>
+                <span className="text-muted tabular">{t.remaining === 0 ? `Nothing left ${day}` : `${Math.round(pct * 100)}% of ${fmtMinutes(cap)} ${day}`}</span>
               )}
-              <button onClick={onOpenSettings} className="text-tint hover:underline">Adjust</button>
+              <button onClick={adjust} className="text-tint hover:underline">Adjust</button>
             </div>
             {over && <p className="text-[13px] text-muted mt-1.5">That’s {(t.remaining / cap).toFixed(1)} days of focused work. Split it up or cut scope.</p>}
           </div>
         </section>
+
+        {priorities.length > 0 && (
+          <Group title="Priorities" footer="Mark an item with ! to !!! from its row.">
+            {priorities.slice(0, 6).map((i) => (
+              <div key={i.id} className="inset-row flex items-center gap-2 min-h-11 px-4 py-2 text-[15px]">
+                <span className="text-tint font-bold w-7 shrink-0" aria-label={`priority ${i.priority}`}>{PRIORITY_MARKS[i.priority ?? 0]}</span>
+                <span className={`truncate ${i.priority === 3 ? 'font-semibold' : ''}`}>{i.text}</span>
+                <span className="ml-auto tabular text-muted shrink-0">{fmtMinutes(i.minutes, { compact: true })}</span>
+              </div>
+            ))}
+          </Group>
+        )}
 
         {/* Stats as a grouped list */}
         <section className="card" aria-label="Summary">

@@ -1,10 +1,12 @@
 import type { Item, Note, Settings } from '../../lib/types';
+import { dateKey } from './dates';
 
 export const NOTES_KEY = 'tally.notes.v1';
 export const SETTINGS_KEY = 'tally.settings.v1';
 
 export const DEFAULT_SETTINGS: Settings = {
   dailyCapacityMinutes: 6 * 60,
+  capacityByDate: {},
   autoEstimate: true,
   apiKey: '',
   accessCode: '',
@@ -32,6 +34,7 @@ export function loadNotes(): Note[] {
   if (!Array.isArray(notes)) return [];
   return notes.map((n) => ({
     ...n,
+    date: typeof n.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(n.date) ? n.date : dateKey(n.createdAt ?? Date.now()),
     title: n.title ?? '',
     items: (n.items ?? []).map((i: Partial<Item>) => ({
       ...i,

@@ -35,7 +35,11 @@ export interface Item {
   notes?: string;
   /** Where the item sits on the Day view, or absent if unscheduled. */
   schedule?: Schedule | null;
+  /** Reminders-style priority: 0 none, 1 low (!), 2 medium (!!), 3 high (!!!). */
+  priority?: Priority;
 }
+
+export type Priority = 0 | 1 | 2 | 3;
 
 export interface Schedule {
   /** Local calendar date, YYYY-MM-DD. */
@@ -46,6 +50,9 @@ export interface Schedule {
 
 export interface Note {
   id: string;
+  /** The day this note is for (YYYY-MM-DD, local). Several notes can share a day. */
+  date: string;
+  /** Defaults to the date ("Monday, September 28"); empty falls back to it too. */
   title: string;
   items: Item[];
   createdAt: number;
@@ -53,8 +60,10 @@ export interface Note {
 }
 
 export interface Settings {
-  /** Minutes of focused time available per day. */
+  /** Default minutes of focused time available per day. */
   dailyCapacityMinutes: number;
+  /** Per-day overrides of the capacity, keyed by YYYY-MM-DD. */
+  capacityByDate: Record<string, number>;
   autoEstimate: boolean;
   /** Your own Anthropic key. Takes priority over the server key; stored in this browser only. */
   apiKey: string;

@@ -7,12 +7,12 @@ import SettingsDialog from './components/SettingsDialog';
 import Toast, { type ToastMsg } from './components/Toast';
 import { AiRequestError, breakdownTask, checkHealth, estimateLines, type AiStatus, type Credentials } from './lib/ai';
 import { heuristicEstimate } from './lib/heuristic';
-import { newItem, newNote } from './lib/notes';
+import { defaultTitle, isAutoTitle, newItem, newNote } from './lib/notes';
 import { loadNotes, loadSettings, saveNotes, saveSettings } from './lib/storage';
 import { extractInlineDuration } from './lib/time';
 import { blocksFor, dateKey, durationOf, nextFreeStart } from './lib/schedule';
 
-export type SortMode = 'original' | 'longest' | 'shortest';
+export type SortMode = 'original' | 'longest' | 'shortest' | 'priority';
 
 /** Lines per estimate request; kept under the API's per-request cap. */
 const ESTIMATE_BATCH = 40;
@@ -20,6 +20,7 @@ export type MobileView = 'list' | 'editor' | 'ledger';
 export type LedgerTab = 'day' | 'summary';
 
 const TAB_KEY = 'tally.ledgerTab.v1';
+const SIDEBAR_KEY = 'tally.sidebar.v1';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>(() => loadNotes());
@@ -41,6 +42,15 @@ export default function App() {
     try { return localStorage.getItem(TAB_KEY) === 'summary' ? 'summary' : 'day'; } catch { return 'day'; }
   });
   const [dayDate, setDayDate] = useState(() => dateKey());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_KEY) === 'collapsed'; } catch { return false; }
+  });
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((c) => {
+      try { localStorage.setItem(SIDEBAR_KEY, c ? 'expanded' : 'collapsed'); } catch { /* per-viewer convenience only */ }
+      return !c;
+    });
+  }, []);
 
   // Latest-state refs so async estimate callbacks never read stale closures.
   const notesRef = useRef(notes);
@@ -69,13 +79,25 @@ export default function App() {
     updateNote(noteId, (n) => ({ ...n, items: n.items.map((i) => (i.id === itemId ? fn(i) : i)) }));
   }, [updateNote]);
 
-  const createNote = useCallback(() => {
-    const n = newNote();
+  /** New note for a day (today by default), titled with the date. */
+  const createNote = useCallback((date = dateKey()) => {
+    const n = newNote(notesRef.current, date);
     setNotes((prev) => [n, ...prev]);
     setSelectedId(n.id);
+    setDayDate(date);
     setSortMode('original');
     setMobileView('editor');
   }, []);
+
+  /** Move a note to another day; an automatic date title follows the date. */
+  const changeNoteDate = useCallback((id: string, date: string) => {
+    updateNote(id, (n) => ({
+      ...n,
+      date,
+      title: isAutoTitle(n) ? defaultTitle(date, notesRef.current, n.id) : n.title,
+    }));
+    setDayDate(date);
+  }, [updateNote]);
 
   const deleteNote = useCallback((id: string) => {
     setNotes((prev) => {
@@ -90,6 +112,8 @@ export default function App() {
 
   const selectNote = useCallback((id: string) => {
     setSelectedId(id);
+    const date = notesRef.current.find((n) => n.id === id)?.date;
+    if (date) setDayDate(date);
     setSortMode('original');
     setMobileView('editor');
   }, []);
@@ -260,6 +284,21 @@ export default function App() {
     updateItem(noteId, itemId, (i) => ({ ...i, schedule }));
   }, [updateItem]);
 
+  /** Resizing a block in the Day view sets the item's time by hand. */
+  const setItemMinutes = useCallback((noteId: string, itemId: string, m: number) => {
+    updateItem(noteId, itemId, (i) => ({ ...i, minutes: m, low: m, high: m, confidence: 'high', rationale: 'Set in the Day view', source: 'manual' }));
+  }, [updateItem]);
+
+  /** Per-day capacity; null goes back to the default from Settings. */
+  const setDayCapacity = useCallback((date: string, minutes: number | null) => {
+    setSettings((s) => {
+      const capacityByDate = { ...s.capacityByDate };
+      if (minutes == null || minutes === s.dailyCapacityMinutes) delete capacityByDate[date];
+      else capacityByDate[date] = minutes;
+      return { ...s, capacityByDate };
+    });
+  }, []);
+
   /** Place an item in the first free slot on a day, across all notes. */
   const scheduleNext = useCallback((noteId: string, itemId: string, date: string) => {
     const item = notesRef.current.find((n) => n.id === noteId)?.items.find((i) => i.id === itemId);
@@ -273,11 +312,13 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); createNote(); }
+      // ⌃⌘S: Show/Hide Sidebar, the standard Mac shortcut
+      if (e.metaKey && e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); toggleSidebar(); }
       if (mod && e.key === ',') { e.preventDefault(); setShowSettings(true); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [createNote]);
+  }, [createNote, toggleSidebar]);
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
 
@@ -286,13 +327,15 @@ export default function App() {
   return (
     <div className="h-full w-full flex bg-grouped text-ink overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-[280px] shrink-0 flex-col bg-grouped md:border-r-[0.5px] border-separator`}>
+      <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full ${sidebarCollapsed ? 'md:w-[76px]' : 'md:w-[280px]'} shrink-0 flex-col bg-grouped md:border-r-[0.5px] border-separator`}>
         <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
           notes={notes}
           selectedId={selectedId}
           aiStatus={aiStatus}
           onSelect={selectNote}
-          onCreate={createNote}
+          onCreate={() => createNote()}
           onOpenSettings={() => setShowSettings(true)}
         />
       </aside>
@@ -322,9 +365,13 @@ export default function App() {
             flash={flash}
             onScheduleNext={(id) => { scheduleNext(selected.id, id, dateKey()); openDay(dateKey()); }}
             onOpenDay={openDay}
+            dayNotes={notes.filter((n) => n.date === selected.date).sort((a, b) => a.createdAt - b.createdAt)}
+            onSelectNote={selectNote}
+            onNewNoteForDay={() => createNote(selected.date)}
+            onChangeDate={(d) => changeNoteDate(selected.id, d)}
           />
         ) : (
-          <EmptyState onCreate={createNote} />
+          <EmptyState onCreate={() => createNote()} />
         )}
       </main>
 
@@ -338,6 +385,8 @@ export default function App() {
           dayDate={dayDate}
           onDayDate={setDayDate}
           onSchedule={scheduleItem}
+          onResize={setItemMinutes}
+          onCapacity={setDayCapacity}
           settings={settings}
           aiStatus={aiStatus}
           pendingCount={pending.size}
