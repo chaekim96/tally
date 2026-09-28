@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { API_LIMITS, CATEGORIES, type EstimateRequest, type EstimateResponse } from '../lib/types.js';
 import { fail, handleApiError, json, MODEL, readJson, resolveClient } from '../lib/ai.js';
+import { renderEstimatePrompt, sanitizeEstimate } from '../lib/prompts.js';
 
 const Output = z.object({
   estimates: z.array(
@@ -24,6 +25,7 @@ For each TARGET line, estimate the wall-clock minutes for one focused, competent
 Rules:
 - "minutes" is the most likely value. "low"/"high" bound an ~80% range. Round to sensible units (5, 10, 15, 30, 45, 60, 90, 120...).
 - If the line already states a duration (e.g. "(2h)", "30 min"), honour it exactly with high confidence.
+- A target line may carry "notes" with extra detail from the user. Use them: they usually make the estimate more specific.
 - If a line is not actionable (heading, question, idea, note-to-self), return minutes 0, low 0, high 0, category "Other", confidence "low".
 - Categories: Work (job/consulting/career), Build (coding, product, side projects), Study (school, reading, courses), Errand (out-of-house chores), Health (fitness, medical), Personal (home, relationships, leisure), Admin (email, calls, paperwork, scheduling), Other.
 - Be realistic, not optimistic: include setup, context switching, and finishing touches. Prefer round, believable numbers.
@@ -49,26 +51,9 @@ export async function POST(request: Request) {
   const client = resolveClient(request);
   if (!client) return fail('no_key', 'No usable API key: add your own key or the access code in Settings.', 503);
 
-  // Only estimate ids that are actually in the note; clip text to keep prompts bounded.
-  const lineIds = new Set(body.lines.map((l) => String(l.id)));
-  body.targetIds = [...new Set(body.targetIds.map(String))].filter((id) => lineIds.has(id));
-  if (body.targetIds.length === 0) return fail('bad_request', 'targetIds must reference lines.', 400);
-  body.title = String(body.title ?? '').slice(0, API_LIMITS.titleChars);
-  body.lines = body.lines.map((l) => ({
-    id: String(l.id),
-    text: String(l.text ?? '').slice(0, API_LIMITS.lineChars),
-    indent: l.indent === 1 ? 1 : 0,
-  }));
-
-  const targets = new Set(body.targetIds);
-  const rendered = body.lines
-    .map((l) => `${l.id}${targets.has(l.id) ? ' [TARGET]' : ''} | ${'  '.repeat(l.indent ?? 0)}${l.text || '(empty)'}`)
-    .join('\n');
-
-  const prompt = `Note title: ${body.title?.trim() || '(untitled)'}
-
-Lines (id | text). Estimate only the ones marked [TARGET]:
-${rendered}`;
+  const clean = sanitizeEstimate(body);
+  if (clean.targetIds.length === 0) return fail('bad_request', 'targetIds must reference lines.', 400);
+  const prompt = renderEstimatePrompt(clean);
 
   try {
     const response = await client.messages.parse({
@@ -85,7 +70,7 @@ ${rendered}`;
 
     // Normalise: only requested ids, integers, sane ordering of the range.
     const byId = new Map(response.parsed_output.estimates.map((e) => [e.id, e]));
-    const estimates = body.targetIds
+    const estimates = clean.targetIds
       .filter((id) => byId.has(id))
       .map((id) => {
         const e = byId.get(id)!;

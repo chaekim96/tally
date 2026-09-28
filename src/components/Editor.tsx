@@ -27,6 +27,9 @@ interface Props {
   ledgerOpen: boolean;
   onToggleLedger: () => void;
   onToast: (text: string) => void;
+  flash: Set<string>;
+  onScheduleNext: (itemId: string) => void;
+  onOpenDay: (date: string) => void;
 }
 
 const NEXT_SORT: Record<SortMode, SortMode> = { original: 'longest', longest: 'shortest', shortest: 'original' };
@@ -207,11 +210,14 @@ export default function Editor(p: Props) {
           {visible.map((item) => (
             <ItemRow
               key={item.id}
+              noteId={note.id}
               item={item}
               pending={p.pending.has(item.id)}
+              flash={p.flash.has(item.id)}
               aiAvailable={p.aiStatus.mode === 'server' || p.aiStatus.mode === 'browser'}
               register={register}
               onChange={(text) => { p.onUpdateItem(item.id, (i) => ({ ...i, text })); p.onTyped(item.id); }}
+              onNotes={(notes) => { p.onUpdateItem(item.id, (i) => ({ ...i, notes })); p.onTyped(item.id); }}
               onToggle={() => p.onUpdateItem(item.id, (i) => ({ ...i, done: !i.done }))}
               onKeyDown={(e) => onKey(e, item)}
               onCategory={(c) => p.onUpdateItem(item.id, (i) => ({ ...i, category: c }))}
@@ -219,6 +225,8 @@ export default function Editor(p: Props) {
               onEstimate={() => p.onEstimate([item.id], true)}
               onBreakdown={() => p.onBreakdown(item.id)}
               onRemove={() => remove(item.id)}
+              onScheduleNext={() => p.onScheduleNext(item.id)}
+              onOpenDay={p.onOpenDay}
             />
           ))}
           {sortMode === 'original' && !hideDone && (

@@ -31,6 +31,17 @@ export interface Item {
   source: EstimateSource | null;
   /** 0 = top-level, 1 = sub-task (from Tab or "Break down"). */
   indent: 0 | 1;
+  /** Free-form detail under the item, like a note in Reminders. Also sent to the estimator. */
+  notes?: string;
+  /** Where the item sits on the Day view, or absent if unscheduled. */
+  schedule?: Schedule | null;
+}
+
+export interface Schedule {
+  /** Local calendar date, YYYY-MM-DD. */
+  date: string;
+  /** Minutes after local midnight. */
+  start: number;
 }
 
 export interface Note {
@@ -57,6 +68,7 @@ export interface Settings {
 export const API_LIMITS = {
   lines: 500,
   lineChars: 300,
+  noteChars: 500,
   targets: 50,
   titleChars: 200,
   breakdownChars: 500,
@@ -76,8 +88,8 @@ export interface HealthResponse {
 
 export interface EstimateRequest {
   title: string;
-  /** Every line in the note, for context. */
-  lines: { id: string; text: string; indent: number }[];
+  /** Every line in the note, for context. `notes` is sent for the target lines. */
+  lines: { id: string; text: string; indent: number; notes?: string }[];
   /** Which line ids to estimate. */
   targetIds: string[];
 }
@@ -100,6 +112,7 @@ export interface EstimateResponse {
 export interface BreakdownRequest {
   title: string;
   text: string;
+  notes?: string;
   siblings: string[];
 }
 

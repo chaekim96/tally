@@ -23,6 +23,14 @@ estimator.
   Click a category chip to change it.
 - **Break down.** `⌘B` on a line asks Claude to split it into 3–7 estimated
   sub-tasks.
+- **Notes on every item.** Focus a row (or press `⇧↩`) for an “Add Note” field,
+  like Reminders. Notes are sent to Claude with the line, so detail makes the
+  estimate tighter.
+- **Day view.** The ledger’s Day tab is a calendar-style day. Drag items from
+  the Unscheduled tray (or a row’s calendar handle) onto a time, drag blocks to
+  move them, drop them back on the tray to unschedule. Without dragging: select
+  an item, then tap a time, or use Next Free Time; focused blocks move with
+  `↑`/`↓` (15 min, `⇧` for an hour) and `Delete` removes them.
 - **Works offline.** No key? Estimates fall back to a keyword heuristic and are
   marked with `~`.
 - Sort by longest/shortest, hide done, search, dark mode, copy as Markdown,
@@ -103,6 +111,8 @@ The repo is set up for Vercel (framework preset: Vite). After importing:
 | `⌥↑` / `⌥↓` | Move line |
 | `⌘E` | Re-estimate line |
 | `⌘B` | Break line into sub-tasks |
+| `⇧↩` / `Esc` | Jump into the item's notes / back to the title |
+| `↑` `↓` (`⇧` for 1h) · `Delete` | Move or remove a focused block in the Day view |
 
 ## Roadmap
 

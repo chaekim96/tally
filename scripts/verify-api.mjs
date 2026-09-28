@@ -21,7 +21,7 @@ const load = (file) => import(pathToFileURL(`${process.cwd()}/${OUT}/${file}`).h
 rmSync(OUT, { recursive: true, force: true });
 execFileSync(
   'npx',
-  ['tsc', 'api/health.ts', 'api/estimate.ts', 'api/breakdown.ts', 'lib/ai.ts', 'lib/types.ts',
+  ['tsc', 'api/health.ts', 'api/estimate.ts', 'api/breakdown.ts', 'lib/ai.ts', 'lib/prompts.ts', 'lib/types.ts',
    '--module', 'nodenext', '--moduleResolution', 'nodenext', '--target', 'es2022',
    '--skipLibCheck', '--outDir', OUT],
   { stdio: 'inherit' },
@@ -118,6 +118,27 @@ try {
     const res = await breakdown.POST(req({}, { title: 'Check', text: 'Ship it', siblings: [] }));
     check('POST /api/breakdown with server key but no code → 503 no_key', res.status === 503, await status(res));
   });
+
+  console.log('\n— Notes reach the prompt, clipped and only for target lines');
+  {
+    const pr = await load('lib/prompts.js');
+    const clean = pr.sanitizeEstimate({
+      title: 'Case prep',
+      lines: [
+        { id: 'a', text: 'Build the model', indent: 0, notes: 'Three scenarios,\n  sensitivity table' },
+        { id: 'b', text: 'Email team', indent: 0, notes: 'context only' },
+        { id: 'c', text: 'Long notes', indent: 0, notes: 'x'.repeat(900) },
+      ],
+      targetIds: ['a', 'c', 'ghost'],
+    });
+    const prompt = pr.renderEstimatePrompt(clean);
+    check('target notes included, newlines collapsed', prompt.includes('notes: Three scenarios, sensitivity table'));
+    check('non-target notes left out', !prompt.includes('context only'));
+    check('notes clipped to 500 chars', clean.lines[2].notes.length === 500, String(clean.lines[2].notes.length));
+    check('unknown target ids dropped', JSON.stringify(clean.targetIds) === '["a","c"]', JSON.stringify(clean.targetIds));
+    const bd = pr.renderBreakdownPrompt(pr.sanitizeBreakdown({ title: 't', text: 'Ship it', notes: 'Needs QA first', siblings: [] }));
+    check('breakdown prompt includes notes', bd.includes('Notes on this task: Needs QA first'));
+  }
 
   console.log('\n— Request caps (rejected before any model call)');
   await withEnv(SERVER, async () => {

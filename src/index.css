@@ -10,6 +10,7 @@
 :root {
   color-scheme: light dark;
   --toolbar-h: calc(56px + env(safe-area-inset-top));
+  --line-h: 44px;                      /* first line of a list row */
 
   /* Surfaces */
   --grouped: #f2f2f7;                  /* systemGroupedBackground: sidebar, ledger, settings */
@@ -38,6 +39,7 @@
   --cat-work: #0040dd;  --cat-build: #3634a3;    --cat-study: #8a5a00;  --cat-errand: #00707f;
   --cat-health: #19702f; --cat-personal: #c20b46; --cat-admin: #6c5d4a; --cat-other: #5b5b60;
   --chip-mix: 14%;
+  --block-mix: 20%;
 
   /* Glass: functional layer only (liquid-glass.md › Where the material belongs) */
   --glass: rgb(255 255 255 / 0.72);
@@ -70,6 +72,7 @@
     --cat-work: #6ab4ff;  --cat-build: #a5a3ff;    --cat-study: #ffd60a;  --cat-errand: #5de6ff;
     --cat-health: #30db5b; --cat-personal: #ff8fa6; --cat-admin: #c2a889; --cat-other: #aeaeb2;
     --chip-mix: 18%;
+    --block-mix: 26%;
 
     --glass: rgb(44 44 46 / 0.72);
     --glass-border: rgb(255 255 255 / 0.1);
@@ -180,16 +183,27 @@
   .cat-Admin { --c: var(--cat-admin); }   .cat-Other { --c: var(--cat-other); }
   .chip { color: var(--c); background: color-mix(in srgb, var(--c) var(--chip-mix), var(--surface)); }
   .cat-fill { background: var(--c); }
+  /* Day view blocks: Calendar-style tinted event with a colored edge */
+  .day-block {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--c) var(--block-mix), var(--surface));
+    border-left: 3px solid var(--c);
+  }
+  /* Blocks from other notes: lighter fill and a dashed edge, never lower text contrast */
+  .day-block.other { background: color-mix(in srgb, var(--c) 7%, var(--surface)); border-left-style: dashed; }
 
   /* Rows: 15px on desktop, iOS Body (17px) and 44pt targets on touch (accessibility.md) */
   .row-text { font-size: 15px; }
   @media (pointer: coarse) {
+    :root { --line-h: 48px; }
     .row-text { font-size: 17px; }
     .tap { min-width: 44px; min-height: 44px; }
     .row { min-height: 48px; }
   }
 
   .estimating { animation: tally-pulse 1.1s ease-in-out infinite; }
+  /* A re-estimate that lands on the same number still needs visible feedback (feedback.md) */
+  .flash { animation: tally-flash 1s ease-out; }
   .pop-in { animation: tally-pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .sheet-in { animation: tally-sheet 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .fade-in { animation: tally-fade 0.16s ease-out; }
@@ -199,6 +213,7 @@
 @keyframes tally-pop { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes tally-sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes tally-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tally-flash { 0%, 30% { background: var(--tint-soft); color: var(--tint); } 100% { background: transparent; } }
 
 /* Reduce Motion: no looping animation; movement becomes a fade (accessibility.md › Cognitive) */
 @media (prefers-reduced-motion: reduce) {

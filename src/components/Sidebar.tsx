@@ -24,7 +24,7 @@ export default function Sidebar({ notes, selectedId, aiStatus, onSelect, onCreat
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const filtered = notes
-      .filter((n) => !needle || noteTitle(n).toLowerCase().includes(needle) || n.items.some((i) => i.text.toLowerCase().includes(needle)))
+      .filter((n) => !needle || noteTitle(n).toLowerCase().includes(needle) || n.items.some((i) => i.text.toLowerCase().includes(needle) || !!i.notes?.toLowerCase().includes(needle)))
       .sort((a, b) => b.updatedAt - a.updatedAt);
     const map = new Map<string, Note[]>();
     for (const n of filtered) {

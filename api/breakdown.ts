@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { API_LIMITS, CATEGORIES, type BreakdownRequest, type BreakdownResponse } from '../lib/types.js';
+import { CATEGORIES, type BreakdownRequest, type BreakdownResponse } from '../lib/types.js';
 import { fail, handleApiError, json, MODEL, readJson, resolveClient } from '../lib/ai.js';
+import { renderBreakdownPrompt, sanitizeBreakdown } from '../lib/prompts.js';
 
 const Output = z.object({
   steps: z.array(
@@ -13,7 +14,7 @@ const Output = z.object({
   ),
 });
 
-const SYSTEM = `You are the planner inside Tally, a personal note-taking app. Break ONE task into 3–7 concrete sub-tasks a person can start on immediately. Each step gets a realistic minutes estimate for a focused, competent person. Steps must be specific (start with a verb), sequential, and together cover the whole task. Keep each step under 12 words. Use the note title and sibling lines only for context — do not include them as steps.`;
+const SYSTEM = `You are the planner inside Tally, a personal note-taking app. Break ONE task into 3–7 concrete sub-tasks a person can start on immediately. Each step gets a realistic minutes estimate for a focused, competent person. Steps must be specific (start with a verb), sequential, and together cover the whole task. Keep each step under 12 words. Use the note title, the task's notes, and sibling lines only for context — do not include them as steps.`;
 
 /** POST /api/breakdown */
 export async function POST(request: Request) {
@@ -25,17 +26,7 @@ export async function POST(request: Request) {
   const client = resolveClient(request);
   if (!client) return fail('no_key', 'No usable API key: add your own key or the access code in Settings.', 503);
 
-  body.text = body.text.slice(0, API_LIMITS.breakdownChars);
-  body.title = String(body.title ?? '').slice(0, API_LIMITS.titleChars);
-  body.siblings = (Array.isArray(body.siblings) ? body.siblings : [])
-    .slice(0, API_LIMITS.siblings)
-    .map((s) => String(s ?? '').slice(0, API_LIMITS.lineChars));
-
-  const prompt = `Note title: ${body.title?.trim() || '(untitled)'}
-Other lines in the note (context only):
-${(body.siblings ?? []).filter(Boolean).map((s) => `- ${s}`).join('\n') || '- (none)'}
-
-Task to break down: ${body.text.trim()}`;
+  const prompt = renderBreakdownPrompt(sanitizeBreakdown(body));
 
   try {
     const response = await client.messages.parse({

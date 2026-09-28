@@ -69,6 +69,7 @@ export function toMarkdown(note: Note): string {
     const box = i.done ? '[x]' : '[ ]';
     const est = i.minutes != null && i.minutes > 0 ? `  ·  ${fmtMinutes(i.minutes)}` : '';
     lines.push(`${'  '.repeat(i.indent)}- ${box} ${i.text.trim()}${est}`);
+    for (const line of (i.notes ?? '').split('\n').filter((l) => l.trim())) lines.push(`${'  '.repeat(i.indent)}    ${line.trim()}`);
   }
   lines.push('', `**Total** ${fmtMinutes(t.total)}  ·  **Remaining** ${fmtMinutes(t.remaining)}`);
   return lines.join('\n');

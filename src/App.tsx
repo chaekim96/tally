@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_LIMITS, type Item, type Note, type Settings } from '../lib/types';
+import { API_LIMITS, type Item, type Note, type Schedule, type Settings } from '../lib/types';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ledger from './components/Ledger';
@@ -10,12 +10,16 @@ import { heuristicEstimate } from './lib/heuristic';
 import { newItem, newNote } from './lib/notes';
 import { loadNotes, loadSettings, saveNotes, saveSettings } from './lib/storage';
 import { extractInlineDuration } from './lib/time';
+import { blocksFor, dateKey, durationOf, nextFreeStart } from './lib/schedule';
 
 export type SortMode = 'original' | 'longest' | 'shortest';
 
 /** Lines per estimate request; kept under the API's per-request cap. */
 const ESTIMATE_BATCH = 40;
 export type MobileView = 'list' | 'editor' | 'ledger';
+export type LedgerTab = 'day' | 'summary';
+
+const TAB_KEY = 'tally.ledgerTab.v1';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>(() => loadNotes());
@@ -32,6 +36,11 @@ export default function App() {
   const [ledgerOpen, setLedgerOpen] = useState(() => window.innerWidth >= 1280);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<ToastMsg | null>(null);
+  const [flash, setFlash] = useState<Set<string>>(new Set());
+  const [ledgerTab, setLedgerTabState] = useState<LedgerTab>(() => {
+    try { return localStorage.getItem(TAB_KEY) === 'summary' ? 'summary' : 'day'; } catch { return 'day'; }
+  });
+  const [dayDate, setDayDate] = useState(() => dateKey());
 
   // Latest-state refs so async estimate callbacks never read stale closures.
   const notesRef = useRef(notes);
@@ -93,16 +102,21 @@ export default function App() {
       return next;
     });
 
-  const applyHeuristics = useCallback((noteId: string, items: Item[]) => {
+  const applyHeuristics = useCallback((noteId: string, items: Item[], force = false) => {
     for (const it of items) {
       const h = heuristicEstimate(it.id, it.text);
       updateItem(noteId, it.id, (cur) =>
-        cur.text === it.text && cur.source !== 'manual'
+        cur.text === it.text && (cur.source !== 'manual' || force)
           ? { ...cur, minutes: h.minutes, low: h.low, high: h.high, category: h.category, confidence: h.confidence, rationale: h.rationale, source: 'heuristic' }
           : cur,
       );
     }
   }, [updateItem]);
+
+  const flashItems = useCallback((ids: string[]) => {
+    setFlash((prev) => new Set([...prev, ...ids]));
+    setTimeout(() => setFlash((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; }), 1000);
+  }, []);
 
   /**
    * Estimate the given items (or all unestimated ones). Inline durations like
@@ -120,6 +134,7 @@ export default function App() {
       const inline = extractInlineDuration(it.text);
       if (inline != null) {
         updateItem(noteId, it.id, (cur) => ({ ...cur, minutes: inline, low: inline, high: inline, confidence: 'high', rationale: 'Duration written in the line', source: 'parsed' }));
+        if (opts.force) flashItems([it.id]);
         continue;
       }
       targets.push(it);
@@ -130,12 +145,23 @@ export default function App() {
     markPending(ids, true);
     try {
       if (aiRef.current.mode === 'offline') {
-        applyHeuristics(noteId, targets);
+        applyHeuristics(noteId, targets, opts.force);
+        if (opts.force) {
+          flashItems(ids);
+          setToast({ kind: 'warn', text: 'Claude isn’t connected, so that was a keyword guess. Add your key or the access code in Settings.' });
+        }
         return;
       }
+      const targetSet = new Set(ids);
       const lines = note.items
         .slice(0, API_LIMITS.lines)
-        .map((i) => ({ id: i.id, text: i.text.slice(0, API_LIMITS.lineChars), indent: i.indent }));
+        .map((i) => ({
+          id: i.id,
+          text: i.text.slice(0, API_LIMITS.lineChars),
+          indent: i.indent,
+          // Notes add detail for the lines being estimated; the rest are context only.
+          notes: targetSet.has(i.id) && i.notes?.trim() ? i.notes.slice(0, API_LIMITS.noteChars) : undefined,
+        }));
       // Batch so "Re-estimate everything" on a long note stays under the per-request cap.
       for (let start = 0; start < targets.length; start += ESTIMATE_BATCH) {
         const batch = targets.slice(start, start + ESTIMATE_BATCH);
@@ -147,13 +173,14 @@ export default function App() {
           const byId = new Map(res.estimates.map((e) => [e.id, e]));
           for (const t of batch) {
             const e = byId.get(t.id);
-            if (!e) { applyHeuristics(noteId, [t]); continue; }
+            if (!e) { applyHeuristics(noteId, [t], opts.force); continue; }
             updateItem(noteId, t.id, (cur) =>
-              cur.text === t.text && (cur.source !== 'manual' || opts.force)
+              cur.text === t.text && (cur.notes ?? '') === (t.notes ?? '') && (cur.source !== 'manual' || opts.force)
                 ? { ...cur, minutes: e.minutes, low: e.low, high: e.high, category: e.category, confidence: e.confidence, rationale: e.rationale, source: 'ai' }
                 : cur,
             );
           }
+          if (opts.force) flashItems(batch.map((t) => t.id));
         } catch (err) {
           const e = err as AiRequestError;
           if (e.code === 'no_key' || e.code === 'bad_key') {
@@ -161,14 +188,14 @@ export default function App() {
           } else {
             setToast({ kind: 'warn', text: e.message || 'Estimate failed — used offline fallback.' });
           }
-          applyHeuristics(noteId, targets.slice(start));
+          applyHeuristics(noteId, targets.slice(start), opts.force);
           return;
         }
       }
     } finally {
       markPending(ids, false);
     }
-  }, [applyHeuristics, updateItem]);
+  }, [applyHeuristics, flashItems, updateItem]);
 
   // Debounced auto-estimate while typing.
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -193,7 +220,7 @@ export default function App() {
     markPending([itemId], true);
     try {
       const res = await breakdownTask(
-        { title: note.title, text: item.text, siblings: note.items.filter((i) => i.id !== itemId).map((i) => i.text) },
+        { title: note.title, text: item.text, notes: item.notes, siblings: note.items.filter((i) => i.id !== itemId).map((i) => i.text) },
         creds(settingsRef.current),
       );
       const subs = res.steps.map((s) =>
@@ -215,6 +242,31 @@ export default function App() {
       markPending([itemId], false);
     }
   }, [updateNote]);
+
+  // ---- scheduling (Day view) ----
+  const setLedgerTab = useCallback((t: LedgerTab) => {
+    setLedgerTabState(t);
+    try { localStorage.setItem(TAB_KEY, t); } catch { /* per-viewer convenience only */ }
+  }, []);
+
+  /** Show the Day view for a date: open the ledger (or switch to it on phones). */
+  const openDay = useCallback((date: string) => {
+    setDayDate(date);
+    setLedgerTab('day');
+    if (window.innerWidth < 768) setMobileView('ledger'); else setLedgerOpen(true);
+  }, [setLedgerTab]);
+
+  const scheduleItem = useCallback((noteId: string, itemId: string, schedule: Schedule | null) => {
+    updateItem(noteId, itemId, (i) => ({ ...i, schedule }));
+  }, [updateItem]);
+
+  /** Place an item in the first free slot on a day, across all notes. */
+  const scheduleNext = useCallback((noteId: string, itemId: string, date: string) => {
+    const item = notesRef.current.find((n) => n.id === noteId)?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const others = blocksFor(notesRef.current, date).filter((b) => b.item.id !== itemId);
+    scheduleItem(noteId, itemId, { date, start: nextFreeStart(others, durationOf(item), date) });
+  }, [scheduleItem]);
 
   // ---- keyboard shortcuts ----
   useEffect(() => {
@@ -267,6 +319,9 @@ export default function App() {
             ledgerOpen={ledgerOpen}
             onToggleLedger={() => (window.innerWidth < 768 ? setMobileView('ledger') : setLedgerOpen((o) => !o))}
             onToast={showToast}
+            flash={flash}
+            onScheduleNext={(id) => { scheduleNext(selected.id, id, dateKey()); openDay(dateKey()); }}
+            onOpenDay={openDay}
           />
         ) : (
           <EmptyState onCreate={createNote} />
@@ -277,6 +332,12 @@ export default function App() {
       <aside className={`${mobileView === 'ledger' ? 'flex' : 'hidden'} ${ledgerOpen ? 'md:flex' : 'md:hidden'} w-full md:w-[320px] shrink-0 flex-col bg-grouped md:border-l-[0.5px] border-separator`}>
         <Ledger
           note={selected}
+          notes={notes}
+          tab={ledgerTab}
+          onTab={setLedgerTab}
+          dayDate={dayDate}
+          onDayDate={setDayDate}
+          onSchedule={scheduleItem}
           settings={settings}
           aiStatus={aiStatus}
           pendingCount={pending.size}
