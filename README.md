@@ -8,6 +8,25 @@ Inspired by [Timely](https://github.com/chaekim96/Google-AI-Studio) (Google AI
 Studio), rebuilt from scratch with a different design and a Claude-powered
 estimator.
 
+## Screenshots
+
+![Tally: notes on the left, the editor in the middle, and the Ledger's Day view on the right](docs/screenshots/overview.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/day-view.png" alt="Day view with a block selected"><br><sub><b>Day view.</b> Capacity meter, an Unscheduled tray, and blocks you can drag, resize or nudge.</sub></td>
+    <td width="50%"><img src="docs/screenshots/summary.png" alt="Summary tab"><br><sub><b>Summary.</b> What's remaining, priorities, finish-by time, and where the time goes.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dark.png" alt="Tally in dark mode"><br><sub><b>Dark mode.</b> Appearance follows the system.</sub></td>
+    <td width="50%"><img src="docs/screenshots/sidebar-rail.png" alt="Minimized sidebar rail of date tiles"><br><sub><b>Sidebar rail.</b> Minimize the sidebar to date tiles; step through a day's notes with the pager.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/menu.png" alt="The More menu"><br><sub><b>More menu.</b> Sort, hide completed, copy as Markdown, delete.</sub></td>
+    <td width="50%" align="center"><img src="docs/screenshots/mobile.png" alt="Day view on a phone" width="46%"> <img src="docs/screenshots/mobile-notes.png" alt="Notes list on a phone" width="46%"><br><sub><b>On a phone.</b> The notes list and the Day view.</sub></td>
+  </tr>
+</table>
+
 ## What it does
 
 - **Write like a list.** Title + lines. `Enter` for a new line, `Tab` to make a
