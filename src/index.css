@@ -1,99 +1,95 @@
 @import "tailwindcss";
 
 /*
- * Tally's design tokens, modeled on Apple's semantic colors (HIG color.md) and
- * adjusted where Apple's defaults miss contrast minimums (accessibility.md:
- * 4.5:1 for text up to 17pt, 3:1 for controls). Ratios are against --surface
- * and --grouped. Appearance follows the system; there is deliberately no
- * in-app theme switch (dark-mode.md › Best practices).
+ * Tally's design tokens follow Chae Kim's brand (personal-brand case study):
+ * ink #111110 on near-white, no accent color. The window is #FEFEFC over a
+ * #F8F8F6 page; small text is #6B6862 (stone #8A8780 fails contrast at ~3.3:1).
+ * Fraunces carries headings and numbers, Poppins carries the UI (weights up to
+ * 600), and the brush face is for the name only. Red survives for exactly one
+ * meaning: destructive and over capacity. Ratios in the comments are against
+ * --surface; scripts/contrast.mjs recomputes every pair. Appearance follows the
+ * system; there is deliberately no in-app theme switch.
  */
 :root {
   color-scheme: light dark;
   --toolbar-h: calc(56px + env(safe-area-inset-top));
   --line-h: 44px;                      /* first line of a list row */
 
-  /* Surfaces */
-  --grouped: #f2f2f7;                  /* systemGroupedBackground: sidebar, ledger, settings */
-  --surface: #ffffff;                  /* content layer and grouped cards */
-  --fill: rgb(118 118 128 / 0.12);     /* tertiarySystemFill: search, stepper, hover */
-  --fill-2: rgb(120 120 128 / 0.2);    /* secondarySystemFill: pressed, switch off */
-  --separator: rgb(60 60 67 / 0.29);   /* hairline separator */
+  /* Surfaces: the window lifts off the page */
+  --grouped: #f8f8f6;                  /* the page: sidebar, ledger, settings */
+  --surface: #fefefc;                  /* the window: editor and grouped cards */
+  --raised: #fefefc;                   /* selected segment */
+  --fill: rgb(17 17 16 / 0.06);        /* search, stepper, chips, hover */
+  --fill-2: rgb(17 17 16 / 0.12);      /* pressed, switch off */
+  --separator: rgb(17 17 16 / 0.14);   /* hairline separator */
 
   /* Labels */
-  --ink: #000000;                      /* label             21.0 / 18.8 */
-  --ink-2: #3c3c43;                    /* secondary content 10.9 /  9.8 */
-  --muted: #636366;                    /* metadata          6.0 /  5.4 (Apple's 60% gray is 3.4) */
-  --control: #86868b;                  /* checkbox ring     3.6 /  3.3 */
+  --ink: #111110;                      /* 18.7 */
+  --ink-2: #3e3d3a;                    /* secondary content 10.8 */
+  --muted: #6b6862;                    /* small text 5.5 (brand rule) */
+  --control: #85827b;                  /* checkbox ring, non-text 3.8 */
 
-  /* Tint: Apple orange, deepened so it can carry text (systemOrange is 2.2:1 on white) */
-  --tint: #b94600;                     /* 5.3 / 4.8, and 5.3 behind white labels */
-  --on-tint: #ffffff;
-  --tint-soft: rgb(185 70 0 / 0.1);
+  /* No accent: the "tint" is ink, and text on it is the window white */
+  --tint: #111110;
+  --on-tint: #fefefc;
+  --tint-soft: rgb(17 17 16 / 0.07);
 
-  --ok: #1b7a31;                       /* 5.4 / 4.9 */
-  --danger: #d70015;                   /* 5.4 / 4.8 */
-  --warn: #9a5700;                     /* 5.6 / 5.0 */
-  --switch-on: #248a3d;                /* 4.4 (non-text, needs 3) */
+  /* Red means one thing: destructive, or over capacity */
+  --danger: #b42318;                   /* 6.5 */
+  --switch-on: #111110;
 
-  /* Categories: each color on a 14% tint of itself is ≥ 4.7:1 */
-  --cat-work: #0040dd;  --cat-build: #3634a3;    --cat-study: #8a5a00;  --cat-errand: #00707f;
-  --cat-health: #19702f; --cat-personal: #c20b46; --cat-admin: #6c5d4a; --cat-other: #5b5b60;
-  --chip-mix: 14%;
-  --block-mix: 20%;
+  --block-mix: 7%;                     /* Day blocks: ink wash over the window */
 
-  /* Glass: functional layer only (liquid-glass.md › Where the material belongs) */
-  --glass: rgb(255 255 255 / 0.72);
-  --glass-border: rgb(0 0 0 / 0.08);
-  --shadow-float: 0 6px 24px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.08);
+  /* Glass: functional layer only (menus, toolbar capsule, toast) */
+  --glass: rgb(254 254 252 / 0.74);
+  --glass-border: rgb(17 17 16 / 0.1);
+  --shadow-float: 0 6px 24px rgb(17 17 16 / 0.09), 0 1px 2px rgb(17 17 16 / 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --grouped: #000000;
-    --surface: #1c1c1e;
-    --fill: rgb(118 118 128 / 0.24);
-    --fill-2: rgb(118 118 128 / 0.36);
-    --separator: rgb(84 84 88 / 0.65);
+    --grouped: #111110;
+    --surface: #1a1a19;
+    --raised: #363532;
+    --fill: rgb(248 248 246 / 0.1);
+    --fill-2: rgb(248 248 246 / 0.18);
+    --separator: rgb(248 248 246 / 0.16);
 
-    --ink: #ffffff;                    /* 17.0 / 21.0 */
-    --ink-2: #e5e5ea;
-    --muted: #aeaeb2;                  /*  7.7 /  9.5 */
-    --control: #8e8e93;                /*  5.2 /  6.4 */
+    --ink: #f8f8f6;                    /* 16.4 */
+    --ink-2: #d6d4ce;                  /* 11.8 */
+    --muted: #a19e97;                  /*  6.5 */
+    --control: #7c7972;                /*  4.0 */
 
-    --tint: #ff9f0a;                   /*  8.3 / 10.2 */
-    --on-tint: #000000;                /* 10.2 on tint (white would be 1.9) */
-    --tint-soft: rgb(255 159 10 / 0.16);
+    --tint: #f8f8f6;
+    --on-tint: #111110;
+    --tint-soft: rgb(248 248 246 / 0.1);
 
-    --ok: #30d158;
-    --danger: #ff6961;
-    --warn: #ffd60a;
-    --switch-on: #30d158;
+    --danger: #ff8a7a;                 /*  7.6 */
+    --switch-on: #f8f8f6;
 
-    --cat-work: #6ab4ff;  --cat-build: #a5a3ff;    --cat-study: #ffd60a;  --cat-errand: #5de6ff;
-    --cat-health: #30db5b; --cat-personal: #ff8fa6; --cat-admin: #c2a889; --cat-other: #aeaeb2;
-    --chip-mix: 18%;
-    --block-mix: 26%;
+    --block-mix: 10%;
 
-    --glass: rgb(44 44 46 / 0.72);
-    --glass-border: rgb(255 255 255 / 0.1);
+    --glass: rgb(26 26 25 / 0.74);
+    --glass-border: rgb(248 248 246 / 0.12);
     --shadow-float: 0 6px 24px rgb(0 0 0 / 0.45), 0 1px 2px rgb(0 0 0 / 0.4);
   }
 }
 
-/* Increase Contrast: darker metadata, stronger edges, opaque glass (color.md, liquid-glass.md › checklist 5) */
+/* Increase Contrast: stronger ink for metadata, firmer edges, opaque glass */
 @media (prefers-contrast: more) {
   :root {
-    --muted: #3c3c43; --control: #3c3c43; --separator: rgb(60 60 67 / 0.65);
-    --fill-2: #8e8e93; --glass: var(--surface); --glass-border: var(--control);
+    --muted: #3e3d3a; --control: #3e3d3a; --separator: rgb(17 17 16 / 0.55);
+    --fill-2: #8a8780; --glass: var(--surface); --glass-border: var(--control);
   }
 }
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-  :root { --muted: #d1d1d6; --control: #d1d1d6; --separator: rgb(255 255 255 / 0.45); --fill-2: #8e8e93; }
+  :root { --muted: #d6d4ce; --control: #d6d4ce; --separator: rgb(248 248 246 / 0.5); --fill-2: #a19e97; }
 }
 
 @theme inline {
   --color-grouped: var(--grouped);
   --color-surface: var(--surface);
+  --color-raised: var(--raised);
   --color-fill: var(--fill);
   --color-fill-2: var(--fill-2);
   --color-separator: var(--separator);
@@ -104,12 +100,11 @@
   --color-tint: var(--tint);
   --color-on-tint: var(--on-tint);
   --color-tint-soft: var(--tint-soft);
-  --color-ok: var(--ok);
   --color-danger: var(--danger);
-  --color-warn: var(--warn);
-  /* The system font: SF Pro on Apple devices, Segoe UI / Roboto elsewhere (typography.md) */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-rounded: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Poppins carries the UI; Fraunces carries headings and numbers; brush is the signature only */
+  --font-sans: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-brush: "Nanum Brush Script", "Fraunces", serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -130,10 +125,10 @@
   button { cursor: pointer; }
   button:disabled { cursor: default; }
   ::placeholder { color: var(--muted); opacity: 1; }
-  ::selection { background: color-mix(in srgb, var(--tint) 28%, transparent); }
+  ::selection { background: color-mix(in srgb, var(--ink) 18%, transparent); }
 
-  /* Visible keyboard focus everywhere (macOS keyboard focus indicator) */
-  :focus-visible { outline: 3px solid color-mix(in srgb, var(--tint) 55%, transparent); outline-offset: 1px; }
+  /* Visible keyboard focus everywhere: a solid ink ring (>= 3:1 on every surface) */
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   /* Inline text (note title, list rows) shows focus with the caret, like a text view */
   .bare:focus-visible { outline: none; }
 
@@ -176,21 +171,20 @@
     border-top: 0.5px solid var(--separator);
   }
 
-  /* Category color: one hue per category, never reused for status (color.md › Best practices) */
-  .cat-Work { --c: var(--cat-work); }     .cat-Build { --c: var(--cat-build); }
-  .cat-Study { --c: var(--cat-study); }   .cat-Errand { --c: var(--cat-errand); }
-  .cat-Health { --c: var(--cat-health); } .cat-Personal { --c: var(--cat-personal); }
-  .cat-Admin { --c: var(--cat-admin); }   .cat-Other { --c: var(--cat-other); }
-  .chip { color: var(--c); background: color-mix(in srgb, var(--c) var(--chip-mix), var(--surface)); }
-  .cat-fill { background: var(--c); }
-  /* Day view blocks: Calendar-style tinted event with a colored edge */
+  /* Categories are named in text, never encoded in hue: every chip is the same quiet pill */
+  .chip { color: var(--ink-2); background: var(--fill); }
+  /* Day view blocks: an ink wash with a solid ink edge, like a pencilled calendar entry */
   .day-block {
     color: var(--ink);
-    background: color-mix(in srgb, var(--c) var(--block-mix), var(--surface));
-    border-left: 3px solid var(--c);
+    background: color-mix(in srgb, var(--ink) var(--block-mix), var(--surface));
+    border-left: 3px solid var(--ink);
+    box-shadow: inset 0 0 0 0.5px var(--separator);
   }
-  /* Blocks from other notes: lighter fill and a dashed edge, never lower text contrast */
-  .day-block.other { background: color-mix(in srgb, var(--c) 7%, var(--surface)); border-left-style: dashed; }
+  /* Blocks from other notes: a lighter wash and a dashed edge, never lower text contrast */
+  .day-block.other { background: color-mix(in srgb, var(--ink) 3%, var(--surface)); border-left-style: dashed; }
+
+  /* The brush face is for the name only */
+  .signature { font-family: var(--font-brush); font-size: 24px; line-height: 1; color: var(--ink); }
 
   /* Rows: 15px on desktop, iOS Body (17px) and 44pt targets on touch (accessibility.md) */
   .row-text { font-size: 15px; }
@@ -213,7 +207,7 @@
 @keyframes tally-pop { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes tally-sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes tally-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tally-flash { 0%, 30% { background: var(--tint-soft); color: var(--tint); } 100% { background: transparent; } }
+@keyframes tally-flash { 0%, 30% { background: var(--tint-soft); } 100% { background: transparent; } }
 
 /* Reduce Motion: no looping animation; movement becomes a fade (accessibility.md › Cognitive) */
 @media (prefers-reduced-motion: reduce) {

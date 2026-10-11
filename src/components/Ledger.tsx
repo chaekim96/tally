@@ -46,7 +46,7 @@ export default function Ledger(props: Props) {
       <header className="safe-pt shrink-0">
         <div className="h-14 px-2.5 flex items-center gap-1">
           <div className="md:hidden"><ToolButton label="Back to Note" onClick={onBack}><ChevronLeft className="w-5 h-5" /></ToolButton></div>
-          <h2 className="px-1.5 text-[17px] font-semibold">Ledger</h2>
+          <h2 className="px-1.5 font-display text-[22px] font-normal tracking-[-0.01em]">Ledger</h2>
           {pendingCount > 0 && <LoaderCircle className="w-4 h-4 text-muted ml-auto mr-2 animate-spin motion-reduce:animate-none" aria-label="Estimating" />}
         </div>
         <Segmented value={tab} onChange={onTab} />
@@ -97,7 +97,7 @@ function Segmented({ value, onChange }: { value: LedgerTab; onChange: (t: Ledger
           aria-controls={`ledger-${t.v}`}
           tabIndex={value === t.v ? 0 : -1}
           onClick={() => onChange(t.v)}
-          className={`h-7 rounded-[7px] text-[13px] font-medium transition-colors ${value === t.v ? 'bg-surface dark:bg-[#636366] shadow-[0_1px_3px_rgb(0_0_0/0.12),0_0_0_0.5px_rgb(0_0_0/0.04)] text-ink' : 'text-ink-2 hover:text-ink'}`}
+          className={`h-7 rounded-[7px] text-[13px] font-medium transition-colors ${value === t.v ? 'bg-raised shadow-[0_1px_3px_rgb(17_17_16/0.12),0_0_0_0.5px_var(--separator)] text-ink' : 'text-ink-2 hover:text-ink'}`}
         >
           {t.label}
         </button>
@@ -119,7 +119,7 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
   const quickWins = active.filter((i) => i.minutes != null && i.minutes > 0 && i.minutes <= 15);
   const deep = active.filter((i) => (i.minutes ?? 0) >= 90);
   const lowConf = active.filter((i) => i.confidence === 'low' && (i.minutes ?? 0) > 0);
-  const meter = over ? 'bg-danger' : pct > 0.8 ? 'bg-warn' : 'bg-tint';
+  const meter = over ? 'bg-danger' : 'bg-tint';
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
@@ -127,7 +127,7 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
         {/* Remaining + capacity: the one bold number on screen */}
         <section className="card p-4" aria-label="Time remaining">
           <div className="text-[13px] font-medium text-muted">Remaining</div>
-          <div className="font-rounded tabular text-[44px] leading-[1.05] font-semibold tracking-[-0.01em] mt-0.5">{fmtMinutes(t.remaining)}</div>
+          <div className="font-display tabular text-[48px] leading-[1.05] font-normal tracking-[-0.02em] mt-0.5">{fmtMinutes(t.remaining)}</div>
           <div className="mt-4">
             <div
               role="meter"
@@ -148,7 +148,7 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
               ) : (
                 <span className="text-muted tabular">{t.remaining === 0 ? `Nothing left ${day}` : `${Math.round(pct * 100)}% of ${fmtMinutes(cap)} ${day}`}</span>
               )}
-              <button onClick={adjust} className="text-tint hover:underline">Adjust</button>
+              <button onClick={adjust} className="text-ink underline underline-offset-[3px] decoration-1">Adjust</button>
             </div>
             {over && <p className="text-[13px] text-muted mt-1.5">That’s {(t.remaining / cap).toFixed(1)} days of focused work. Split it up or cut scope.</p>}
           </div>
@@ -158,7 +158,7 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
           <Group title="Priorities" footer="Mark an item with ! to !!! from its row.">
             {priorities.slice(0, 6).map((i) => (
               <div key={i.id} className="inset-row flex items-center gap-2 min-h-11 px-4 py-2 text-[15px]">
-                <span className="text-tint font-bold w-7 shrink-0" aria-label={`priority ${i.priority}`}>{PRIORITY_MARKS[i.priority ?? 0]}</span>
+                <span className="text-ink font-semibold w-7 shrink-0" aria-label={`priority ${i.priority}`}>{PRIORITY_MARKS[i.priority ?? 0]}</span>
                 <span className={`truncate ${i.priority === 3 ? 'font-semibold' : ''}`}>{i.text}</span>
                 <span className="ml-auto tabular text-muted shrink-0">{fmtMinutes(i.minutes, { compact: true })}</span>
               </div>
@@ -169,7 +169,7 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
         {/* Stats as a grouped list */}
         <section className="card" aria-label="Summary">
           <Row label="Total" value={fmtMinutes(t.total)} />
-          <Row label="Completed" value={fmtMinutes(t.done)} tone={t.done ? 'text-ok' : undefined} />
+          <Row label="Completed" value={fmtMinutes(t.done)} tone={t.done ? 'text-ink' : undefined} />
           <Row label="Items" value={`${t.doneCount} of ${t.count}`} />
           <Row label="Finish By" value={t.remaining > 0 ? finishBy(now, t.remaining) : '—'} />
         </section>
@@ -178,14 +178,14 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
           <Group title="Where the Time Goes">
             <div className="p-4">
               <div className="flex h-2.5 rounded-full overflow-hidden gap-[2px]" aria-hidden>
-                {t.byCategory.map((c) => (
-                  <div key={c.category} className={`cat-${c.category} cat-fill`} style={{ width: `${(c.minutes / t.remaining) * 100}%` }} />
+                {t.byCategory.map((c, n) => (
+                  <div key={c.category} className="bg-ink" style={{ width: `${(c.minutes / t.remaining) * 100}%`, opacity: shade(n) }} />
                 ))}
               </div>
               <ul className="mt-3 space-y-1.5">
-                {t.byCategory.map((c) => (
+                {t.byCategory.map((c, n) => (
                   <li key={c.category} className="flex items-center gap-2 text-[14px]">
-                    <span className={`cat-${c.category} cat-fill w-2.5 h-2.5 rounded-full`} aria-hidden />
+                    <span className="bg-ink w-2.5 h-2.5 rounded-full" style={{ opacity: shade(n) }} aria-hidden />
                     <span>{c.category}</span>
                     <span className="ml-auto tabular text-muted">{fmtMinutes(c.minutes, { compact: true })}</span>
                   </li>
@@ -208,12 +208,12 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
 
         <div className="space-y-2">
           {t.unestimated > 0 && (
-            <button onClick={onEstimateAll} className="tap w-full h-11 rounded-[12px] bg-tint text-on-tint text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:brightness-95">
+            <button onClick={onEstimateAll} className="tap w-full h-11 rounded-[12px] bg-tint text-on-tint text-[15px] font-semibold flex items-center justify-center gap-2 hover:opacity-85 active:opacity-70">
               <Sparkles className="w-4 h-4" aria-hidden /> Estimate {t.unestimated} {t.unestimated === 1 ? 'Item' : 'Items'}
             </button>
           )}
           {t.count > 0 && (
-            <button onClick={onReestimateAll} className="tap w-full h-11 rounded-[12px] bg-fill text-tint text-[15px] font-medium flex items-center justify-center gap-2 hover:bg-fill-2">
+            <button onClick={onReestimateAll} className="tap w-full h-11 rounded-[12px] bg-fill text-ink text-[15px] font-medium flex items-center justify-center gap-2 hover:bg-fill-2">
               <RefreshCw className="w-4 h-4" aria-hidden /> Re-estimate All
             </button>
           )}
@@ -224,8 +224,8 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
           )}
           {aiStatus.mode === 'offline' && (
             <p className="text-[13px] text-muted px-1 pt-1">
-              <span className="text-warn font-medium">Offline.</span> Estimates marked “~” are keyword guesses.{' '}
-              <button onClick={onOpenSettings} className="text-tint hover:underline">Add your key or the access code</button> to use Claude.
+              <span className="text-ink font-semibold">Offline.</span> Estimates marked “~” are keyword guesses.{' '}
+              <button onClick={onOpenSettings} className="text-ink underline underline-offset-[3px] decoration-1">Add your key or the access code</button> to use Claude.
             </p>
           )}
         </div>
@@ -235,6 +235,9 @@ function Summary({ note, settings, aiStatus, onEstimateAll, onReestimateAll, onO
     </div>
   );
 }
+
+/** Category shares are drawn in ink, darkest first. Hue never carries meaning; the legend names every slice. */
+const shade = (n: number) => Math.max(0.5, 1 - n * 0.1);
 
 function Row({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (

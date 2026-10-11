@@ -8,11 +8,11 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--switch-on)]' : 'bg-fill-2'}`}
+      className={`relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--switch-on)]' : 'bg-fill-2 ring-[1.5px] ring-inset ring-control'}`}
     >
       <span
         aria-hidden
-        className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-[0_2px_6px_rgb(0_0_0/0.2),0_0_0_0.5px_rgb(0_0_0/0.04)] transition-transform duration-200 ${checked ? 'translate-x-[20px]' : ''}`}
+        className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-surface shadow-[0_2px_6px_rgb(17_17_16/0.25),0_0_0_0.5px_rgb(17_17_16/0.1)] transition-transform duration-200 ${checked ? 'translate-x-[20px]' : ''}`}
       />
     </button>
   );
@@ -64,7 +64,7 @@ export function ToolButton({ label, onClick, active, children }: { label: string
       title={label}
       aria-pressed={active}
       onClick={onClick}
-      className={`tap w-9 h-9 grid place-items-center rounded-full transition-colors ${active ? 'text-tint' : 'text-ink'} hover:bg-fill`}
+      className={`tap w-9 h-9 grid place-items-center rounded-full transition-colors ${active ? 'bg-fill text-ink' : 'text-ink'} hover:bg-fill-2`}
     >
       {children}
     </button>

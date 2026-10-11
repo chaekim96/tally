@@ -61,12 +61,12 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
 
   const status =
     aiStatus.mode === 'checking' ? { dot: 'bg-control', label: 'Checking Claude…' }
-    : aiStatus.mode === 'offline' ? { dot: 'bg-warn', label: 'Offline estimates' }
-    : aiStatus.mode === 'browser' ? { dot: 'bg-ok', label: 'Claude · your key' }
-    : { dot: 'bg-ok', label: 'Claude · server key' };
+    : aiStatus.mode === 'offline' ? { dot: 'border-[1.5px] border-ink', label: 'Offline estimates' }
+    : aiStatus.mode === 'browser' ? { dot: 'bg-ink', label: 'Claude · your key' }
+    : { dot: 'bg-ink', label: 'Claude · server key' };
 
   const newNoteButton = (
-    <button onClick={onCreate} aria-label="New Note" title="New Note (⌘N)" className="tap w-9 h-9 grid place-items-center rounded-full text-tint hover:bg-tint-soft">
+    <button onClick={onCreate} aria-label="New Note" title="New Note (⌘N)" className="tap w-9 h-9 grid place-items-center rounded-full text-ink hover:bg-fill">
       <SquarePen className="w-5 h-5" />
     </button>
   );
@@ -99,8 +99,8 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
                 title={noteTitle(n)}
                 className={`relative w-[52px] py-1.5 rounded-[12px] flex flex-col items-center leading-none ${active ? 'bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'hover:bg-fill'}`}
               >
-                <span className="text-[11px] font-semibold text-tint uppercase tracking-wide">{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                <span className="text-[21px] font-medium tabular mt-0.5">{d.getDate()}</span>
+                <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                <span className="font-display text-[22px] tabular mt-0.5">{d.getDate()}</span>
                 {sameDay.length > 1 && (
                   <span aria-hidden className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-surface shadow-[0_0_0_0.5px_var(--separator)] text-[11px] leading-4 tabular text-ink-2">{nth}</span>
                 )}
@@ -130,7 +130,7 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
             {newNoteButton}
           </div>
         </div>
-        <h1 className="px-4 text-[28px] font-bold tracking-[-0.01em] leading-tight">Notes</h1>
+        <h1 className="px-4 font-display text-[34px] font-normal tracking-[-0.015em] leading-tight">Notes</h1>
         <div className="px-3 pt-2.5 pb-2">
           <label className="relative block">
             <span className="sr-only">Search notes</span>
@@ -193,7 +193,11 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
         )}
       </nav>
 
-      <div className="px-4 h-11 flex items-center gap-2 text-[12px] text-muted border-t-[0.5px] border-separator safe-pb" role="status">
+      <div className="px-4 pt-3 pb-1 flex items-baseline gap-1.5 text-[12px] text-muted border-t-[0.5px] border-separator">
+        made by
+        <span role="img" aria-label="Chae Kim" lang="ko" className="signature">김채운</span>
+      </div>
+      <div className="px-4 h-9 flex items-center gap-2 text-[12px] text-muted safe-pb" role="status">
         <span className={`w-2 h-2 rounded-full ${status.dot}`} aria-hidden />
         <span className="truncate">{status.label}</span>
         <span className="ml-auto tabular" aria-label={`${notes.length} notes`}>{notes.length}</span>

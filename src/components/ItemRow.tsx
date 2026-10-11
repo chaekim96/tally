@@ -102,7 +102,7 @@ export default function ItemRow(p: Props) {
             onClick={cyclePriority}
             aria-label={`Priority: ${PRIORITY_NAMES[priority]}. Change priority`}
             title={`${PRIORITY_NAMES[priority]} priority`}
-            className={`row-text shrink-0 h-[var(--line-h)] pr-1.5 font-bold tracking-[-0.04em] ${item.done ? 'text-muted' : 'text-tint'}`}
+            className={`row-text shrink-0 h-[var(--line-h)] pr-1.5 font-semibold tracking-[-0.04em] ${item.done ? 'text-muted' : 'text-ink'}`}
           >
             {PRIORITY_MARKS[priority]}
           </button>
@@ -141,7 +141,7 @@ export default function ItemRow(p: Props) {
           <button
             onClick={() => p.onOpenDay(item.schedule!.date)}
             aria-label={`Scheduled ${when}. Show in Day view`}
-            className={`flex items-center gap-1 text-[12px] text-muted hover:text-tint pb-2.5 ${showNotes ? '' : '-mt-2'}`}
+            className={`flex items-center gap-1 text-[12px] text-muted hover:text-ink pb-2.5 ${showNotes ? '' : '-mt-2'}`}
           >
             <CalendarClock className="w-3.5 h-3.5" aria-hidden />{when}
           </button>
@@ -163,7 +163,7 @@ export default function ItemRow(p: Props) {
             </RowAction>
           )}
           <RowAction label={`Priority: ${PRIORITY_NAMES[priority]} (click to change)`} onClick={cyclePriority}>
-            <span className="text-[15px] font-bold leading-none">!</span>
+            <span className="text-[15px] font-semibold leading-none">!</span>
           </RowAction>
           {p.aiAvailable && item.indent === 0 && (
             <RowAction label="Break Down into Subtasks (⌘B)" onClick={p.onBreakdown}><ListTree className="w-4 h-4" /></RowAction>
@@ -181,7 +181,7 @@ export default function ItemRow(p: Props) {
             onClick={cycleCategory}
             aria-label={`Category: ${item.category}. Change category`}
             title="Change category"
-            className={`chip cat-${item.category} text-[12px] font-medium px-2 h-[22px] rounded-full whitespace-nowrap ${p.pending ? 'estimating' : ''}`}
+            className={`chip text-[12px] font-medium px-2 h-[22px] rounded-full whitespace-nowrap ${p.pending ? 'estimating' : ''}`}
           >
             {item.category}
           </button>
@@ -207,7 +207,7 @@ export default function ItemRow(p: Props) {
             onClick={startEdit}
             title={detail || 'Set time manually'}
             aria-label={`Estimate: ${spoken}. Edit estimate`}
-            className={`tabular text-[14px] px-1.5 h-7 rounded-[7px] hover:bg-fill transition-colors ${p.flash ? 'flash' : ''} ${est == null || est === 0 || item.source === 'heuristic' || item.done ? 'text-muted' : 'text-ink'} ${item.source === 'manual' ? 'underline decoration-dotted underline-offset-4' : ''}`}
+            className={`font-display tabular text-[16px] px-1.5 h-7 rounded-[7px] hover:bg-fill transition-colors ${p.flash ? 'flash' : ''} ${est == null || est === 0 || item.source === 'heuristic' || item.done ? 'text-muted' : 'text-ink'} ${item.source === 'manual' ? 'underline decoration-dotted underline-offset-4' : ''}`}
           >
             {est == null ? '–' : est === 0 ? '—' : `${item.source === 'heuristic' ? '~' : ''}${fmtMinutes(est, { compact: true })}`}
           </button>
@@ -219,7 +219,7 @@ export default function ItemRow(p: Props) {
 
 function RowAction({ label, onClick, children, ...drag }: { label: string; onClick: () => void; children: React.ReactNode } & Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'draggable' | 'onDragStart' | 'onDragEnd'>) {
   return (
-    <button aria-label={label} title={label} onClick={onClick} {...drag} className="w-7 h-7 grid place-items-center rounded-full text-muted hover:text-tint hover:bg-tint-soft">
+    <button aria-label={label} title={label} onClick={onClick} {...drag} className="w-7 h-7 grid place-items-center rounded-full text-muted hover:text-ink hover:bg-fill">
       {children}
     </button>
   );

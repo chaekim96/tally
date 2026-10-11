@@ -67,8 +67,8 @@ export default function SettingsDialog({ settings, notes, aiStatus, onChange, on
         className="w-full md:w-[480px] max-h-[92vh] flex flex-col bg-grouped rounded-t-[14px] md:rounded-[14px] shadow-2xl sheet-in md:pop-in outline-none overflow-hidden"
       >
         <header className="relative h-14 shrink-0 flex items-center justify-center border-b-[0.5px] border-separator">
-          <h2 id="settings-title" className="text-[17px] font-semibold">Settings</h2>
-          <button ref={doneRef} onClick={onClose} className="tap absolute right-2 h-9 px-3 rounded-full text-[17px] font-semibold text-tint hover:bg-tint-soft">
+          <h2 id="settings-title" className="font-display text-[22px] font-normal">Settings</h2>
+          <button ref={doneRef} onClick={onClose} className="tap absolute right-2 h-9 px-3 rounded-full text-[17px] font-semibold text-ink hover:bg-fill">
             Done
           </button>
         </header>
@@ -170,7 +170,7 @@ function FieldRow({ label, value, placeholder, onChange }: { label: string; valu
 
 function ActionRow({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="inset-row w-full min-h-11 px-4 text-left text-[15px] text-tint hover:bg-fill">
+    <button onClick={onClick} className="inset-row w-full min-h-11 px-4 text-left text-[15px] text-ink hover:bg-fill">
       {children}
     </button>
   );

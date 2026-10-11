@@ -421,12 +421,12 @@ function creds(s: Settings): Credentials {
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-      <img src="/favicon.svg" alt="" width={64} height={64} className="mb-5 drop-shadow-[0_8px_18px_rgb(240_106_10/0.25)]" />
-      <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notes That Add Up</h2>
+      <img src="/favicon.svg" alt="" width={64} height={64} className="mb-5" />
+      <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.01em]">Notes that add up</h2>
       <p className="text-[15px] text-muted mt-1.5 max-w-[300px] leading-snug">
         Write a list. Every line gets a time estimate, and the ledger adds them up.
       </p>
-      <button onClick={onCreate} className="tap mt-6 h-11 px-5 rounded-full bg-tint text-on-tint text-[15px] font-semibold hover:brightness-110 active:brightness-95">
+      <button onClick={onCreate} className="tap mt-6 h-11 px-5 rounded-full bg-tint text-on-tint text-[15px] font-semibold hover:opacity-85 active:opacity-70">
         New Note
       </button>
       <p className="text-[12px] text-muted mt-3">or press <kbd>⌘N</kbd></p>

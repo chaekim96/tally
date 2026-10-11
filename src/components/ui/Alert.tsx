@@ -28,19 +28,19 @@ export default function Alert({ title, message, confirmLabel, destructive, onCon
         aria-labelledby="alert-title"
         aria-describedby={message ? 'alert-message' : undefined}
         tabIndex={-1}
-        className="w-full max-w-[300px] bg-surface rounded-[18px] shadow-2xl pop-in overflow-hidden outline-none"
+        className="w-full max-w-[300px] bg-surface rounded-[18px] shadow-[0_24px_60px_rgb(17_17_16/0.25)] pop-in overflow-hidden outline-none"
       >
         <div className="px-5 pt-5 pb-4 text-center">
-          <h2 id="alert-title" className="text-[17px] font-semibold leading-snug">{title}</h2>
+          <h2 id="alert-title" className="font-display text-[20px] font-normal leading-snug">{title}</h2>
           {message && <p id="alert-message" className="text-[13px] text-ink-2 mt-1.5 leading-snug">{message}</p>}
         </div>
         <div className="grid grid-cols-2 border-t-[0.5px] border-separator">
-          <button ref={cancelRef} onClick={onCancel} className="h-11 text-[17px] text-tint hover:bg-fill">
+          <button ref={cancelRef} onClick={onCancel} className="h-11 text-[17px] text-ink hover:bg-fill">
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`h-11 text-[17px] font-semibold border-l-[0.5px] border-separator hover:bg-fill ${destructive ? 'text-danger' : 'text-tint'}`}
+            className={`h-11 text-[17px] font-semibold border-l-[0.5px] border-separator hover:bg-fill ${destructive ? 'text-danger' : 'text-ink'}`}
           >
             {confirmLabel}
           </button>

@@ -156,19 +156,19 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
     <div className="flex flex-col flex-1 min-h-0">
       {/* Date navigation */}
       <div className="flex items-center gap-1 px-2.5 pt-1">
-        <button onClick={() => onDate(addDays(date, -1))} aria-label="Previous Day" className="tap w-9 h-9 grid place-items-center rounded-full text-tint hover:bg-tint-soft">
+        <button onClick={() => onDate(addDays(date, -1))} aria-label="Previous Day" className="tap w-9 h-9 grid place-items-center rounded-full text-ink hover:bg-fill">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 text-center min-w-0">
-          <div className="text-[15px] font-semibold truncate">{dayLabel(date, today)}</div>
+          <div className="font-display text-[19px] leading-tight truncate">{dayLabel(date, today)}</div>
           <div className="text-[12px] text-muted truncate">{parseKey(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
         </div>
-        <button onClick={() => onDate(addDays(date, 1))} aria-label="Next Day" className="tap w-9 h-9 grid place-items-center rounded-full text-tint hover:bg-tint-soft">
+        <button onClick={() => onDate(addDays(date, 1))} aria-label="Next Day" className="tap w-9 h-9 grid place-items-center rounded-full text-ink hover:bg-fill">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
       {!isToday && (
-        <div className="text-center -mt-0.5"><button onClick={() => onDate(today)} className="text-[13px] text-tint font-medium hover:underline">Go to Today</button></div>
+        <div className="text-center -mt-0.5"><button onClick={() => onDate(today)} className="text-[13px] text-ink font-medium underline underline-offset-[3px] decoration-1">Go to Today</button></div>
       )}
 
       {/* Capacity for this day: step through days, adjust each one */}
@@ -178,7 +178,7 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
             <div className="text-[15px]">Capacity</div>
             {capacityIsDefault
               ? <div className="text-[12px] text-muted">Default</div>
-              : <button onClick={() => onCapacity(date, null)} className="text-[12px] text-tint hover:underline">Use Default</button>}
+              : <button onClick={() => onCapacity(date, null)} className="text-[12px] text-ink underline underline-offset-[3px] decoration-1">Use Default</button>}
           </div>
           <Stepper
             label={`Capacity for ${dayLabel(date, today)}`}
@@ -197,7 +197,7 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
           aria-valuetext={over ? `Over by ${fmtMinutes(scheduled - capacity)}` : `${fmtMinutes(scheduled)} of ${fmtMinutes(capacity)} scheduled`}
           className="h-1.5 mt-3 rounded-full bg-fill overflow-hidden"
         >
-          <div className={`h-full rounded-full transition-[width] duration-300 ${over ? 'bg-danger' : fill > 0.8 ? 'bg-warn' : 'bg-tint'}`} style={{ width: `${fill * 100}%` }} />
+          <div className={`h-full rounded-full transition-[width] duration-300 ${over ? 'bg-danger' : 'bg-tint'}`} style={{ width: `${fill * 100}%` }} />
         </div>
         <div className="flex justify-between mt-1.5 text-[12px] tabular">
           <span className="text-muted">{fmtMinutes(scheduled)} scheduled</span>
@@ -239,9 +239,8 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
                     aria-label={`${i.text.trim()}, ${fmtMinutes(durationOf(i))}. ${picked ? 'Selected. Tap a time to place it.' : 'Select to place, or drag onto the day.'}`}
                     className={`w-full flex items-center gap-2.5 min-h-9 px-4 py-1.5 text-left text-[14px] cursor-grab active:cursor-grabbing ${picked ? 'bg-tint-soft' : 'hover:bg-fill'}`}
                   >
-                    <span className={`cat-${i.category} cat-fill w-2 h-2 rounded-full shrink-0`} aria-hidden />
-                    <span className="flex-1 truncate">
-                      {!!i.priority && <span className="text-tint font-bold mr-1" aria-label={`priority ${i.priority}`}>{PRIORITY_MARKS[i.priority]}</span>}{i.text}
+                                        <span className="flex-1 truncate">
+                      {!!i.priority && <span className="text-ink font-semibold mr-1" aria-label={`priority ${i.priority}`}>{PRIORITY_MARKS[i.priority]}</span>}{i.text}
                     </span>
                     <span className="tabular text-[13px] text-muted shrink-0">{i.minutes && i.minutes > 0 ? fmtMinutes(i.minutes, { compact: true }) : '30m?'}</span>
                   </button>
@@ -306,12 +305,12 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
                   }}
                   aria-pressed={selected}
                   aria-label={`${b.item.text.trim()}${other ? `, from ${b.noteTitle}` : ''}, ${clockRange(b.start, b.start + dur)}${b.item.done ? ', completed' : ''}. Arrow keys move it, Option-arrow changes its length, Delete removes it.`}
-                  className={`group/block day-block cat-${b.item.category} absolute rounded-[7px] text-left overflow-hidden px-2 py-[3px] cursor-grab active:cursor-grabbing ${other ? 'other' : ''} ${selected ? 'ring-2 ring-tint z-10' : ''}`}
+                  className={`group/block day-block absolute rounded-[7px] text-left overflow-hidden px-2 py-[3px] cursor-grab active:cursor-grabbing ${other ? 'other' : ''} ${selected ? 'ring-2 ring-tint z-10' : ''}`}
                   style={{ top: b.start * PX + 1, height: h, left: `calc(${(b.col / b.cols) * 100}% + 2px)`, width: `calc(${100 / b.cols}% - 4px)` }}
                 >
                   <div className={`text-[12px] font-semibold leading-[16px] truncate ${b.item.done ? 'line-through text-muted' : ''}`}>
                     {b.item.done && <Check className="inline w-3 h-3 mr-0.5 -mt-px" aria-hidden />}
-                    {!!b.item.priority && <span className="text-tint font-bold mr-0.5">{PRIORITY_MARKS[b.item.priority]}</span>}
+                    {!!b.item.priority && <span className="font-semibold mr-0.5">{PRIORITY_MARKS[b.item.priority]}</span>}
                     {b.item.text}
                   </div>
                   {h >= 38 && <div className="text-[11px] leading-[15px] text-ink-2 truncate tabular">{clockRange(b.start, b.start + dur)}{resize?.itemId === b.item.id ? ` · ${fmtMinutes(dur)}` : ''}</div>}
@@ -342,14 +341,14 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
                     onPointerCancel={() => { resizeRef.current = null; setResize(null); }}
                     className="absolute left-0 right-0 bottom-0 h-2.5 cursor-ns-resize touch-none"
                   >
-                    <span className={`absolute left-1/2 -translate-x-1/2 bottom-[3px] w-7 h-[3px] rounded-full bg-[var(--c)] ${selected || resize?.itemId === b.item.id ? 'opacity-90' : 'opacity-0 group-hover/block:opacity-70'}`} />
+                    <span className={`absolute left-1/2 -translate-x-1/2 bottom-[3px] w-7 h-[3px] rounded-full bg-ink ${selected || resize?.itemId === b.item.id ? 'opacity-90' : 'opacity-0 group-hover/block:opacity-70'}`} />
                   </span>
                 </button>
               );
             })}
 
             {preview && (
-              <div aria-hidden className="absolute left-0.5 right-0.5 rounded-[7px] border-[1.5px] border-dashed border-tint bg-tint-soft pointer-events-none px-2 py-[3px] text-[11px] font-medium text-tint tabular z-20"
+              <div aria-hidden className="absolute left-0.5 right-0.5 rounded-[7px] border-[1.5px] border-dashed border-ink bg-tint-soft pointer-events-none px-2 py-[3px] text-[11px] font-medium text-ink tabular z-20"
                 style={{ top: preview.start * PX + 1, height: Math.max(22, preview.dur * PX - 2) }}>
                 {clock(preview.start)}
               </div>
@@ -357,14 +356,14 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
 
             {isToday && (
               <div aria-hidden className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: nowMin * PX }}>
-                <div className="relative border-t-[1.5px] border-danger">
-                  <span className="absolute -left-[5px] -top-[5.5px] w-2.5 h-2.5 rounded-full bg-danger" />
+                <div className="relative border-t-[1.5px] border-ink">
+                  <span className="absolute -left-[5px] -top-[5.5px] w-2.5 h-2.5 rounded-full bg-ink" />
                 </div>
               </div>
             )}
           </div>
           {isToday && (
-            <span aria-hidden className="absolute left-0 w-11 pr-2 text-right text-[11px] font-semibold tabular text-danger -mt-[7px] pointer-events-none" style={{ top: nowMin * PX }}>
+            <span aria-hidden className="absolute left-0 w-11 pr-2 text-right text-[11px] font-semibold tabular text-ink -mt-[7px] pointer-events-none" style={{ top: nowMin * PX }}>
               {clock(nowMin).replace(/\s?[AP]M$/i, '')}
             </span>
           )}
@@ -383,7 +382,7 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
           {sel.kind === 'tray' ? (
             <>
               <BarButton label="Next Free Time" onClick={placeNextFree}><Wand2 className="w-4 h-4" /></BarButton>
-              <button onClick={() => setSel(null)} className="tap h-8 px-3 rounded-full text-[14px] text-tint hover:bg-tint-soft">Cancel</button>
+              <button onClick={() => setSel(null)} className="tap h-8 px-3 rounded-full text-[14px] text-ink hover:bg-fill">Cancel</button>
             </>
           ) : (
             <>
@@ -406,7 +405,7 @@ export default function DayView({ note, notes, date, onDate, capacity, capacityI
 function BarButton({ label, onClick, destructive, children }: { label: string; onClick: () => void; destructive?: boolean; children: React.ReactNode }) {
   return (
     <button onClick={onClick} aria-label={label} title={label}
-      className={`tap h-8 min-w-8 px-2 grid place-items-center rounded-full bg-fill hover:bg-fill-2 ${destructive ? 'text-danger' : 'text-tint'}`}>
+      className={`tap h-8 min-w-8 px-2 grid place-items-center rounded-full bg-fill hover:bg-fill-2 ${destructive ? 'text-danger' : 'text-ink'}`}>
       {children}
     </button>
   );
