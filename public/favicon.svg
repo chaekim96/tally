@@ -1,11 +1,2 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <style>
-    .bg{fill:#111110} .mark{stroke:#FEFEFC} .cut{stroke:#111110}
-    @media (prefers-color-scheme: dark){.bg{fill:#F8F8F6} .mark{stroke:#111110} .cut{stroke:#F8F8F6}}
-    .mark,.cut{fill:none} .mark{stroke-linecap:round} .cut{stroke-linecap:butt}
-  </style>
-  <rect class="bg" width="512" height="512" rx="114"/>
-  <g class="mark" stroke-width="54"><line x1="136" y1="155" x2="136" y2="357"/><line x1="216" y1="155" x2="216" y2="357"/><line x1="296" y1="155" x2="296" y2="357"/><line x1="376" y1="155" x2="376" y2="357"/></g>
-  <line class="cut" stroke-width="82" x1="92" y1="344" x2="420" y2="168"/>
-  <line class="mark" stroke-width="54" x1="92" y1="344" x2="420" y2="168"/>
-</svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#111110"/><g stroke="#f8f8f6" stroke-width="4" stroke-linecap="round"><path d="M19 16v32M27 16v32M35 16v32M43 16v32"/></g><path d="M13 43 51 21" stroke="#e0533f" stroke-width="4.5" stroke-linecap="round"/></svg>
