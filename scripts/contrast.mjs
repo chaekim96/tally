@@ -7,11 +7,11 @@ const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); re
 const themes = {
   light: {
     grouped: '#F8F8F6', surface: '#FEFEFC', ink: '#111110', ink2: '#3E3D3A', muted: '#6B6862', control: '#85827B', danger: '#B42318', onInk: '#FEFEFC',
-    fillA: 0.06, fill2A: 0.12, blockA: 0.07, otherA: 0.03, fg: '#111110', raised: '#FEFEFC',
+    fillA: 0.06, fill2A: 0.12, blockA: 0.07, otherA: 0.03, fg: '#111110', raised: '#FEFEFC', seal: '#C63D2F',
   },
   dark: {
     grouped: '#111110', surface: '#1A1A19', ink: '#F8F8F6', ink2: '#D6D4CE', muted: '#A19E97', control: '#7C7972', danger: '#FF8A7A', onInk: '#111110',
-    fillA: 0.1, fill2A: 0.18, blockA: 0.1, otherA: 0.04, raised: '#363532',
+    fillA: 0.1, fill2A: 0.18, blockA: 0.1, otherA: 0.04, raised: '#363532', seal: '#E0533F',
   },
 };
 const rows = [];
@@ -48,6 +48,15 @@ for (const [name, t] of Object.entries(themes)) {
   add('ui', 'danger fill on surface', hex(t.danger), S, 3);
   add('ui', 'Day block edge (ink) on block', I, block, 3);
   add('ui', 'meter fill ink on track fill2', I, mix(I, t.fillA, S), 3);
+  // Builds brand: wordmark, endorsement, and the Electric seal mark (public/favicon.svg)
+  add('text', 'wordmark "Tally" (ink) on page', I, G, 4.5);
+  add('text', 'endorsement "a Chae Kim build" (muted) on page', hex(t.muted), G, 4.5);
+  add('ui', 'endorsement seal square (decorative) on page', hex(t.seal), G, 3);
+  // the mark is a logo, so its tile need not reach 3:1 on the page; its drawing must on the tile
+  for (const [stop, c] of [['top', '#FF857F'], ['mid', '#FF3B30'], ['bottom', '#E6352B']]) {
+    add('ui', `mark: ink tally strokes on tile (${stop} stop)`, hex('#111110'), hex(c), 3);
+    add('ui', `mark: white slash on tile (${stop} stop, brand floor 1.8)`, hex('#FFFFFF'), hex(c), 1.8);
+  }
   // category bar tones: ink at alpha steps on surface; lightest must hold 3:1
   const ramp = [1, 0.85, 0.72, 0.62, 0.54, 0.5];
   const lightest = mix(I, ramp[ramp.length - 1], S);

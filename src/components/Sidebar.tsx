@@ -125,6 +125,11 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
           <div className="hidden md:block">
             <ToolButton label="Hide Sidebar (⌃⌘S)" onClick={onToggleCollapsed}><PanelLeft className="w-[19px] h-[19px] text-muted" /></ToolButton>
           </div>
+          {/* Product wordmark: the Electric seal + Tally in Poppins 600 (Builds brand book) */}
+          <span className="wordmark ml-1.5 select-none">
+            <img src="/favicon.svg" alt="" width={24} height={24} draggable={false} />
+            Tally
+          </span>
           <div className="ml-auto flex items-center gap-0.5">
             <ToolButton label="Settings (⌘,)" onClick={onOpenSettings}><Settings className="w-[19px] h-[19px] text-muted" /></ToolButton>
             {newNoteButton}
@@ -193,9 +198,8 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
         )}
       </nav>
 
-      <div className="px-4 pt-3 pb-1 flex items-baseline gap-1.5 text-[12px] text-muted border-t-[0.5px] border-separator">
-        made by
-        <span role="img" aria-label="Chae Kim" lang="ko" className="signature">김채운</span>
+      <div className="px-4 pt-3 pb-1 border-t-[0.5px] border-separator">
+        <span className="endorse"><i aria-hidden />a Chae Kim build</span>
       </div>
       <div className="px-4 h-9 flex items-center gap-2 text-[12px] text-muted safe-pb" role="status">
         <span className={`w-2 h-2 rounded-full ${status.dot}`} aria-hidden />
