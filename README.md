@@ -1,4 +1,11 @@
-# Tally
+<a href="https://tally-lake-seven.vercel.app">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/readme/header-dark.png">
+  <img src="brand/readme/header-light.png" alt="Tally: Knowing how long your to-do list will actually take.">
+</picture>
+</a>
+
+**[Try it live →](https://tally-lake-seven.vercel.app)**
 
 **Notes that add up.** A personal note-taker where every line you write gets a
 time estimate in a ledger column on the right — so a to-do list turns into an
@@ -149,3 +156,7 @@ The repo is set up for Vercel (framework preset: Vite). After importing:
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) — next up is an agent that can *do* the
 task, not just size it.
+
+---
+
+<p align="center"><a href="https://chaekim.vercel.app"><img src="brand/readme/seal.svg" width="10" height="10" alt=""> <sub>a Chae Kim build</sub></a></p>
