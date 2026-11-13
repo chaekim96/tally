@@ -199,7 +199,7 @@ export default function Sidebar({ notes, selectedId, aiStatus, collapsed, onTogg
       </nav>
 
       <div className="px-4 pt-3 pb-1 border-t-[0.5px] border-separator">
-        <span className="endorse"><i aria-hidden />a Chae Kim build</span>
+        <a className="endorse" href="https://chaekim.vercel.app" target="_blank" rel="noopener noreferrer"><i aria-hidden />a Chae Kim build</a>
       </div>
       <div className="px-4 h-9 flex items-center gap-2 text-[12px] text-muted safe-pb" role="status">
         <span className={`w-2 h-2 rounded-full ${status.dot}`} aria-hidden />

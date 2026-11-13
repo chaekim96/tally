@@ -194,6 +194,8 @@
   /* Builds endorsement (brand book): a 7px seal-red square + "a Chae Kim build", quiet and uppercase */
   .endorse { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.2; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .endorse i { flex: none; width: 7px; height: 7px; background: var(--seal); border-radius: 1px; }
+  a.endorse { text-decoration: none; }
+  a.endorse:hover, a.endorse:focus-visible { color: var(--ink); }
 
   /* Product wordmark (brand book): Poppins 600, -0.02em, beside the 64-unit tile mark */
   .wordmark { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-weight: 600; font-size: 17px; line-height: 1.2; letter-spacing: -0.02em; color: var(--ink); }
